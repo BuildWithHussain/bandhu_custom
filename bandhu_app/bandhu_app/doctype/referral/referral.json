@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "REF-.YYYY.-.#####",
+ "creation": "2026-04-11 21:03:19.907745",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "referral_information_section",
+  "patient_encounter",
+  "clinic_session",
+  "patient",
+  "referral_by_source",
+  "status",
+  "helpline_flag",
+  "column_break_rzmb",
+  "project",
+  "referred_to",
+  "referred_to_practitioner",
+  "created_by",
+  "created_on",
+  "referral_details_section",
+  "priority",
+  "reason",
+  "column_break_uxbd",
+  "required_action_from",
+  "notes",
+  "followup_logs_section",
+  "referral_followup"
+ ],
+ "fields": [
+  {
+   "fetch_from": "patient_encounter.patient",
+   "fieldname": "patient",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Patient",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_rzmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "patient_encounter",
+   "fieldtype": "Link",
+   "label": "Patient Clinic Visit",
+   "options": "Patient Encounter"
+  },
+  {
+   "fetch_from": "patient_encounter.practitioner",
+   "fieldname": "referral_by_source",
+   "fieldtype": "Data",
+   "label": "Referral By (Source)"
+  },
+  {
+   "fieldname": "referral_information_section",
+   "fieldtype": "Section Break",
+   "label": "Patient Information"
+  },
+  {
+   "description": "hospital name / helpline / specialist name",
+   "fieldname": "referred_to",
+   "fieldtype": "Data",
+   "label": "Referred to "
+  },
+  {
+   "fieldname": "referred_to_practitioner",
+   "fieldtype": "Link",
+   "label": "Referred To Practitioner",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Doctor\"]]",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "referral_details_section",
+   "fieldtype": "Section Break",
+   "label": "Referral Details "
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Long Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "Low\nMedium\nHigh"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nIn Progress\nCompleted\nLost"
+  },
+  {
+   "default": "0",
+   "fieldname": "helpline_flag",
+   "fieldtype": "Check",
+   "label": "Helpline Flag"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Data",
+   "label": "Created By ",
+   "link_filters": "[]",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_on",
+   "fieldtype": "Datetime",
+   "label": "Created On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "followup_logs_section",
+   "fieldtype": "Section Break",
+   "label": "Followup Logs"
+  },
+  {
+   "fieldname": "referral_followup",
+   "fieldtype": "Table",
+   "label": "Referral Followup",
+   "options": "Referral Followup"
+  },
+  {
+   "fetch_from": "patient_encounter.custom_project",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Bandhu Projects"
+  },
+  {
+   "fetch_from": "patient_encounter.custom_clinic_session",
+   "fieldname": "clinic_session",
+   "fieldtype": "Data",
+   "label": "Clinic Session",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uxbd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "required_action_from",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Required Action From",
+   "options": "None\nProgramme\nClinic"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "patient"
+  }
+ ],
+ "modified": "2026-04-24 10:15:25.750897",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Referral",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient"
+}

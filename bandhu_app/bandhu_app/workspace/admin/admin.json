@@ -1,0 +1,81 @@
+{
+ "app": "frappe",
+ "charts": [],
+ "content": "[{\"id\":\"svhROOO8hc\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Admin</span>\",\"col\":12}},{\"id\":\"QkFF9Vyji-\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"LiLCpOur0c\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"SDKV6BOECu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project\",\"col\":6}},{\"id\":\"VPcNKsK5e_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Users\",\"col\":6}},{\"id\":\"E8MXtzx7mB\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Roles\",\"col\":6}},{\"id\":\"c5FIOPo6Yv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Healthcare Practitioner\",\"col\":6}},{\"id\":\"1YeGxof0ys\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Location\",\"col\":6}},{\"id\":\"R_-WXPPbX_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Site \",\"col\":6}}]",
+ "creation": "2026-04-16 23:27:02.949058",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "clipboard-plus",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Admin",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-04-20 08:18:56.350725",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Admin",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 26.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Project",
+   "link_to": "Bandhu Projects",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Location",
+   "link_to": "Bandhu Location",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Users",
+   "link_to": "User",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Roles",
+   "link_to": "Role",
+   "stats_filter": "[[\"Role\",\"role_name\",\"in\",[\"Doctor\",\"Nurse\",\"Helpline Staff\",\"Clinic Assistant cum Driver\"]]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Site ",
+   "link_to": "Site",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Healthcare Practitioner",
+   "link_to": "Healthcare Practitioner",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Admin",
+ "type": "Workspace"
+}

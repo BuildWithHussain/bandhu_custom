@@ -1,0 +1,65 @@
+{
+ "app": "frappe",
+ "charts": [],
+ "content": "[{\"id\":\"grZMA4YJzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Doctor</span>\",\"col\":12}},{\"id\":\"knKIJUXN8H\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Mvu2SsraTF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient\",\"col\":12}},{\"id\":\"toUtJQCE6-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient Queue\",\"col\":6}},{\"id\":\"ti00prfKhd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Referral\",\"col\":6}},{\"id\":\"Lu7rZWxhEC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Referral Followup\",\"col\":6}}]",
+ "creation": "2026-04-20 17:44:47.583251",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "grid",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Doctor",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-04-20 17:51:07.857911",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Doctor",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 27.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Referral Followup",
+   "link_to": "Referral Followup",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Patient Queue",
+   "link_to": "Patient Queue",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Patient",
+   "link_to": "Patient",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Referral",
+   "link_to": "Referral",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Doctor",
+ "type": "Workspace"
+}

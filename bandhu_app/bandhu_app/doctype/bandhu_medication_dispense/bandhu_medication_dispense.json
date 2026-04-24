@@ -1,0 +1,150 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-13 08:03:40.914449",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "prescription_ref",
+  "project",
+  "clinic_session",
+  "column_break_awfc",
+  "encounter",
+  "instructions",
+  "section_break_fngu",
+  "table_pbtr",
+  "section_break_oivd",
+  "medicine",
+  "source",
+  "column_break_jtih",
+  "quantity",
+  "dispensed_by",
+  "section_break_iork",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient"
+  },
+  {
+   "fieldname": "prescription_ref",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Bandhu Prescription",
+   "options": "Prescription"
+  },
+  {
+   "fieldname": "column_break_awfc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "encounter",
+   "fieldtype": "Link",
+   "label": "Clinic Visit",
+   "options": "Patient Encounter"
+  },
+  {
+   "fieldname": "section_break_oivd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "medicine",
+   "fieldtype": "Link",
+   "label": "Medicine",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_jtih",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "In-house\nExternal"
+  },
+  {
+   "fieldname": "section_break_iork",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nDispensed"
+  },
+  {
+   "fieldname": "dispensed_by",
+   "fieldtype": "Link",
+   "label": "Dispensed By",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Nurse\"]]",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Small Text",
+   "label": "Instructions"
+  },
+  {
+   "fetch_from": "encounter.custom_project",
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Bandhu Projects"
+  },
+  {
+   "fieldname": "clinic_session",
+   "fieldtype": "Link",
+   "label": "Clinic Session",
+   "options": "Bandhu Clinic Session"
+  },
+  {
+   "fieldname": "section_break_fngu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "table_pbtr",
+   "fieldtype": "Table",
+   "label": "Medication",
+   "options": "Prescription"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-22 15:12:36.443236",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Bandhu Medication Dispense",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient"
+}

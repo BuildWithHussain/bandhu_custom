@@ -1,0 +1,185 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "CS-.YY.-.MM.-.DD.-.SITE.-.UNIT.-.###",
+ "creation": "2026-04-13 08:14:19.128869",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "clinic",
+  "status",
+  "site",
+  "project",
+  "column_break_qtbr",
+  "date",
+  "start_time",
+  "end_time",
+  "section_break_uyjf",
+  "assigned_doctor",
+  "assigned_driver",
+  "column_break_mmtq",
+  "assigned_nurse",
+  "vehicle",
+  "additional_details_section",
+  "departure_time",
+  "arrival_time",
+  "distance_travelled",
+  "column_break_ltxj",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Bandhu Projects",
+   "reqd": 1
+  },
+  {
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "label": "Site",
+   "options": "Site",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_qtbr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "label": "Start Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "End Time",
+   "read_only": 1
+  },
+  {
+   "default": "Planned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Planned\nIn Progress\nCompleted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_uyjf",
+   "fieldtype": "Section Break",
+   "label": "Team"
+  },
+  {
+   "fieldname": "assigned_doctor",
+   "fieldtype": "Link",
+   "label": "Assigned Doctor",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Doctor\"]]",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "column_break_mmtq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assigned_nurse",
+   "fieldtype": "Link",
+   "label": "Assigned Nurse",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Nurse\"]]",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "assigned_driver",
+   "fieldtype": "Link",
+   "label": "Assigned Driver",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Clinic Assistant cum Driver (CAD)\"]]",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "additional_details_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Details"
+  },
+  {
+   "fieldname": "departure_time",
+   "fieldtype": "Datetime",
+   "label": "Departure Time"
+  },
+  {
+   "fieldname": "arrival_time",
+   "fieldtype": "Datetime",
+   "label": "Arrival Time"
+  },
+  {
+   "fieldname": "column_break_ltxj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "distance_travelled",
+   "fieldtype": "Data",
+   "label": "Distance Travelled"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "clinic",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Clinic",
+   "options": "Clinic",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Vehicle",
+   "options": "Vehicle"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "custom_clinic_session"
+  }
+ ],
+ "modified": "2026-04-24 16:58:21.203224",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Bandhu Clinic Session",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "site"
+}

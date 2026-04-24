@@ -1,0 +1,113 @@
+{
+ "app": "bandhu_app",
+ "charts": [],
+ "content": "[{\"id\":\"OUoNwjaC2h\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Bandhu Clinic Operations</span>\",\"col\":12}},{\"id\":\"W9E_i2W2pw\",\"type\":\"paragraph\",\"data\":{\"text\":\"Hi, welcome. Let's start the clinic session:&nbsp;\",\"col\":12}},{\"id\":\"7wIG3PkFpW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\uddd1\ud83c\udffb\u200d\u2695\ufe0fClinic\",\"col\":6}},{\"id\":\"uhR29saJao\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udcdd Start Clinic Session \",\"col\":6}},{\"id\":\"WHiIVWTp-B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\ude7a Start Consultation\",\"col\":6}},{\"id\":\"lSR0h04UX3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u2795 Register Patient\",\"col\":6}},{\"id\":\"6lAS5pb0vk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udccb Patient Queue\",\"col\":4}},{\"id\":\"hxK2X54IX2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Staff Log \u26d1\ufe0f\",\"col\":4}},{\"id\":\"od5KkK2DdZ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assign Units\",\"col\":4}},{\"id\":\"DVlJ5DWGV9\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"p2SVoIVsnN\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle log\",\"col\":4}},{\"id\":\"DB49k0jxHD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Refuel Log\",\"col\":4}},{\"id\":\"Sn7-BmiRM2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Usage Log\",\"col\":4}}]",
+ "creation": "2026-04-15 12:39:03.722813",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "healthcare",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Bandhu Clinic",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-04-22 12:29:18.469152",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Bandhu",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 23.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "New",
+   "label": "\u2795 Register Patient",
+   "link_to": "Patient",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "New",
+   "label": "\ud83e\ude7a Start Consultation",
+   "link_to": "Patient Encounter",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\ud83d\udccb Patient Queue",
+   "link_to": "Patient Queue",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\ud83e\uddd1\ud83c\udffb\u200d\u2695\ufe0fClinic",
+   "link_to": "Clinic",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Staff Log \u26d1\ufe0f",
+   "link_to": "Staff Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vehicle log",
+   "link_to": "Vehicle",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\ud83d\udcdd Start Clinic Session ",
+   "link_to": "Bandhu Clinic Session",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vehicle Refuel Log",
+   "link_to": "Vehicle Refuel Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Vehicle Usage Log",
+   "link_to": "Vehicle Usage Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Assign Units",
+   "link_to": "Unit",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Bandhu",
+ "type": "Workspace"
+}
