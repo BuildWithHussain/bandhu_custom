@@ -1,7 +1,7 @@
 {
  "app": "frappe",
  "charts": [],
- "content": "[{\"id\":\"grZMA4YJzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Doctor</span>\",\"col\":12}},{\"id\":\"knKIJUXN8H\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Mvu2SsraTF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient\",\"col\":12}},{\"id\":\"toUtJQCE6-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient Queue\",\"col\":6}},{\"id\":\"ti00prfKhd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Referral\",\"col\":6}},{\"id\":\"Lu7rZWxhEC\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Referral Followup\",\"col\":6}}]",
+ "content": "[{\"id\":\"grZMA4YJzB\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Doctor</span>\",\"col\":12}},{\"id\":\"knKIJUXN8H\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"8UoS4UNe0S\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Mvu2SsraTF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient\",\"col\":12}},{\"id\":\"nINvG-PmTJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient Queue\",\"col\":12}},{\"id\":\"ti00prfKhd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Referral\",\"col\":12}}]",
  "creation": "2026-04-20 17:44:47.583251",
  "custom_blocks": [],
  "docstatus": 0,
@@ -15,7 +15,7 @@
  "label": "Doctor",
  "link_type": "DocType",
  "links": [],
- "modified": "2026-04-20 17:51:07.857911",
+ "modified": "2026-05-01 17:11:54.110077",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Doctor",
@@ -30,16 +30,8 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Referral Followup",
-   "link_to": "Referral Followup",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
    "label": "Patient Queue",
-   "link_to": "Patient Queue",
+   "link_to": "Patient Encounter",
    "stats_filter": "[]",
    "type": "DocType"
   },

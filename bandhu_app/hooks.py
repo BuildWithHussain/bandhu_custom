@@ -253,3 +253,15 @@ require_type_annotated_api_methods = True
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+fixtures = [
+    {"doctype": "Client Script"},
+    {"doctype": "Server Script"},
+    {"doctype": "Workflow"}
+]
+
+doc_events = {
+    "Patient": {
+        "before_insert": "bandhu_app.bandhu_app.utils.custom_bandhu_id.set_bandhu_id",
+        "after_insert": "bandhu_app.bandhu_app.utils.patient_qr.create_patient_qr"
+    }
+}

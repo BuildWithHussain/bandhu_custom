@@ -20,7 +20,8 @@ class BandhuMedicationDispense(Document):
 		encounter: DF.Link | None
 		instructions: DF.SmallText | None
 		medicine: DF.Link | None
-		patient: DF.Link | None
+		nurse_name: DF.Data | None
+		patient: DF.Data | None
 		prescription_ref: DF.Link | None
 		project: DF.Link | None
 		quantity: DF.Float

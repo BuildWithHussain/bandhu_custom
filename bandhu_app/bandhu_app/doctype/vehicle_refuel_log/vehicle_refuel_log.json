@@ -36,12 +36,14 @@
   {
    "fieldname": "date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Date",
    "reqd": 1
   },
   {
    "fieldname": "odometer_reading",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Odometer Reading",
    "reqd": 1
   },
@@ -57,6 +59,7 @@
   {
    "fieldname": "fuel_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Fuel Type",
    "options": "Petrol\nDiesel\nCNG\nElectric"
   },
@@ -125,8 +128,17 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-04-17 19:20:29.839793",
+ "links": [
+  {
+   "link_doctype": "Vehicle",
+   "link_fieldname": "custom_vehicle_name__id"
+  },
+  {
+   "link_doctype": "Vehicle Usage Log",
+   "link_fieldname": "vehicle"
+  }
+ ],
+ "modified": "2026-05-01 11:55:55.797495",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Vehicle Refuel Log",
@@ -147,7 +159,9 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
+ "show_title_field_in_link": 1,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "vehicle"
 }

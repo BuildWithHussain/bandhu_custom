@@ -5,13 +5,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "encounter",
+  "project",
+  "instructions",
+  "column_break_awfc",
   "patient",
   "prescription_ref",
-  "project",
   "clinic_session",
-  "column_break_awfc",
-  "encounter",
-  "instructions",
   "section_break_fngu",
   "table_pbtr",
   "section_break_oivd",
@@ -20,15 +20,17 @@
   "column_break_jtih",
   "quantity",
   "dispensed_by",
+  "column_break_bdcj",
+  "nurse_name",
   "section_break_iork",
   "status"
  ],
  "fields": [
   {
+   "fetch_from": "encounter.patient",
    "fieldname": "patient",
-   "fieldtype": "Link",
-   "label": "Patient",
-   "options": "Patient"
+   "fieldtype": "Data",
+   "label": "Patient"
   },
   {
    "fieldname": "prescription_ref",
@@ -102,6 +104,7 @@
    "options": "Bandhu Projects"
   },
   {
+   "fetch_from": "encounter.custom_clinic_session",
    "fieldname": "clinic_session",
    "fieldtype": "Link",
    "label": "Clinic Session",
@@ -116,12 +119,23 @@
    "fieldtype": "Table",
    "label": "Medication",
    "options": "Prescription"
+  },
+  {
+   "fetch_from": "dispensed_by.practitioner_name",
+   "fieldname": "nurse_name",
+   "fieldtype": "Data",
+   "label": "Nurse Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bdcj",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-22 15:12:36.443236",
+ "modified": "2026-05-01 18:26:15.369384",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Bandhu Medication Dispense",
