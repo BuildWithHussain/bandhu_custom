@@ -1,6 +1,6 @@
 
-
 import io
+
 import frappe
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
