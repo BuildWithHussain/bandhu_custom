@@ -17,7 +17,9 @@ class PatientQueue(Document):
 		clinic_session: DF.Data | None
 		completed_on: DF.Datetime | None
 		created_on: DF.Autocomplete | None
-		current_stage: DF.Literal["Waiting", "With Doctor", "With Nurse (Test)", "With Nurse (Medicine)", "Completed"]
+		current_stage: DF.Literal[
+			"Waiting", "With Doctor", "With Nurse (Test)", "With Nurse (Medicine)", "Completed"
+		]
 		encounter: DF.Link | None
 		handled_by: DF.Link | None
 		last_updated: DF.Autocomplete | None
