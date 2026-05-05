@@ -26,15 +26,12 @@ def make_qr_image(data: str) -> bytes:
 def generate_qr_code_file(doc, data: str, field_name="custom_qr_code"):
 	qr_data = make_qr_image(data)
 
-	file_doc = frappe.get_doc(
-		{
-			"doctype": "File",
-			"content": qr_data,
-			"attached_to_doctype": doc.doctype,
-			"attached_to_name": doc.name,
-			"attached_to_field": field_name,
-			"file_name": f"{doc.custom_bandhu_id}.png",
-		}
-	).save(ignore_permissions=True)
+	file_doc = frappe.new_doc("File")
+	file_doc.content = qr_data
+	file_doc.attached_to_doctype = doc.doctype
+	file_doc.attached_to_name = doc.name
+	file_doc.attached_to_field = field_name
+	file_doc.file_name = f"{doc.custom_bandhu_id}.png"
+	file_doc.insert()
 
 	return file_doc.file_url

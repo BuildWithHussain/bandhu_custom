@@ -3,7 +3,7 @@
 import frappe
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_patient_by_uid(uid: str):
 	patient = frappe.get_all("Patient", filters={"custom_bandhu_id": uid}, fields=["name", "patient_name"])
 

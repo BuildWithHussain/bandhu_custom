@@ -18,4 +18,4 @@ def create_patient_qr(doc, method):
 	)
 
 	# update field
-	doc.db_set("custom_qr_code", file_url)
+	frappe.db.set_value(doc.doctype, doc.name, "custom_qr_code", file_url)
