@@ -1,7 +1,7 @@
 {
  "app": "frappe",
  "charts": [],
- "content": "[{\"id\":\"Pxr9eadgR1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">Pharmacist Module</span>\",\"col\":12}},{\"id\":\"ntNpvi8M-i\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"-YhD3nJcxq\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"JjYg_YcpqR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medicine Movement\",\"col\":12}},{\"id\":\"PH4weaJJrZ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medicines\",\"col\":12}},{\"id\":\"Q7hG0VruUt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medication Dispense\",\"col\":12}}]",
+ "content": "[{\"id\":\"Pxr9eadgR1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">Pharmacist Module</span>\",\"col\":12}},{\"id\":\"ntNpvi8M-i\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"-YhD3nJcxq\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"JjYg_YcpqR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medicine Movement\",\"col\":12}},{\"id\":\"PH4weaJJrZ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Medicines\",\"col\":12}}]",
  "creation": "2026-04-16 23:13:47.807606",
  "custom_blocks": [],
  "docstatus": 0,
@@ -15,7 +15,7 @@
  "label": "Pharmacist",
  "link_type": "DocType",
  "links": [],
- "modified": "2026-04-20 17:35:03.466955",
+ "modified": "2026-05-01 17:12:29.772823",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Pharmacist",
@@ -40,14 +40,6 @@
    "doc_view": "List",
    "label": "Medicines",
    "link_to": "Item",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Medication Dispense",
-   "link_to": "Bandhu Medication Dispense",
    "stats_filter": "[]",
    "type": "DocType"
   }

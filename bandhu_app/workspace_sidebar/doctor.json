@@ -1,0 +1,27 @@
+{
+ "app": "bandhu_app",
+ "creation": "2026-04-20 17:50:11.474973",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Doctor",
+   "link_to": "Doctor",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-27 17:54:11.667267",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Doctor",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Doctor"
+}

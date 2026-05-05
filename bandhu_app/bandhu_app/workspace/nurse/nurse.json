@@ -1,21 +1,21 @@
 {
  "app": "frappe",
  "charts": [],
- "content": "[{\"id\":\"j5y68ez5as\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">Nurse</span>\",\"col\":12}},{\"id\":\"OuslvuI9ZL\",\"type\":\"paragraph\",\"data\":{\"text\":\"This will cover all the stuff of Nurse module\",\"col\":12}},{\"id\":\"ux7j99r9IX\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u2764\ufe0f Record Vitals\",\"col\":6}},{\"id\":\"W2QCxAJ5wd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udce4 Create Referral\",\"col\":6}},{\"id\":\"PqV-CcPx_j\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udc8a Dispense Medicine\",\"col\":6}},{\"id\":\"9p8yZGUauQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83e\uddea Record Test\",\"col\":6}}]",
- "creation": "2026-04-16 13:09:45.189940",
+ "content": "[{\"id\":\"2OiP63Lh2T\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h2\\\">Nurse</span>\",\"col\":12}},{\"id\":\"41QkXylKHI\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"WqSFn7qNu4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udc8a Medication Dispense\",\"col\":6}},{\"id\":\"s78Ti0SWr4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\ud83d\udcc3 Test Result\",\"col\":6}}]",
+ "creation": "2026-04-27 17:58:16.212862",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
  "icon": "grid",
- "idx": 1,
+ "idx": 0,
  "indicator_color": "green",
  "is_hidden": 0,
  "label": "Nurse",
  "link_type": "DocType",
  "links": [],
- "modified": "2026-04-22 12:36:37.018192",
+ "modified": "2026-04-27 18:04:17.188902",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Nurse",
@@ -25,37 +25,21 @@
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 24.0,
+ "sequence_id": 31.0,
  "shortcuts": [
   {
    "color": "Grey",
-   "doc_view": "New",
-   "label": "\u2764\ufe0f Record Vitals",
-   "link_to": "Vital Signs",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "\ud83d\udce4 Create Referral",
-   "link_to": "Referral",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "\ud83e\uddea Record Test",
-   "link_to": "Test Result",
-   "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "New",
-   "label": "\ud83d\udc8a Dispense Medicine",
+   "doc_view": "List",
+   "label": "\ud83d\udc8a Medication Dispense",
    "link_to": "Bandhu Medication Dispense",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "\ud83d\udcc3 Test Result",
+   "link_to": "Test Result",
    "stats_filter": "[]",
    "type": "DocType"
   }

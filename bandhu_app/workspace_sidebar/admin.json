@@ -1,0 +1,27 @@
+{
+ "app": "bandhu_app",
+ "creation": "2026-04-17 12:44:18.952870",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Admin",
+   "link_to": "Admin",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-27 17:54:23.360795",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Admin",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Admin"
+}
