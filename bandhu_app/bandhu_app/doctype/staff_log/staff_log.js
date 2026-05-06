@@ -12,7 +12,7 @@ frappe.ui.form.on("Staff Log", {
 	refresh: function (frm) {
 		// Check In
 		if (!frm.doc.check_in) {
-			frm.add_custom_button("Check In", () => {
+			frm.add_custom_button(__("Check In"), () => {
 				frm.set_value("check_in", frappe.datetime.now_datetime());
 				frm.save();
 			});
@@ -20,7 +20,7 @@ frappe.ui.form.on("Staff Log", {
 
 		// Check Out
 		if (frm.doc.check_in && !frm.doc.check_out) {
-			frm.add_custom_button("Check Out", () => {
+			frm.add_custom_button(__("Check Out"), () => {
 				frm.set_value("check_out", frappe.datetime.now_datetime());
 				frm.save();
 			});

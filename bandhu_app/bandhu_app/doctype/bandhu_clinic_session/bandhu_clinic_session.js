@@ -17,10 +17,10 @@ frappe.ui.form.on("Bandhu Clinic Session", {
 	refresh: function (frm) {
 		// START BUTTON
 		if (frm.doc.status === "Planned") {
-			frm.add_custom_button("Start Session", async () => {
+			frm.add_custom_button(__("Start Session"), async () => {
 				// basic guard
 				if (!frm.doc.clinic || !frm.doc.date) {
-					frappe.msgprint("Please set Clinic and Date before starting.");
+					frappe.msgprint(__("Please set Clinic and Date before starting."));
 					return;
 				}
 
@@ -28,20 +28,20 @@ frappe.ui.form.on("Bandhu Clinic Session", {
 				frm.set_value("start_time", frappe.datetime.now_datetime());
 				await frm.save();
 
-				frappe.show_alert({ message: "Session Started", indicator: "green" });
+				frappe.show_alert({ message: __("Session Started"), indicator: "green" });
 			});
 		}
 
 		// END BUTTON
 		if (frm.doc.status === "In Progress") {
-			frm.add_custom_button("End Session", async () => {
+			frm.add_custom_button(__("End Session"), async () => {
 				// optional safety checks
 				// (keep light for now)
 				frm.set_value("status", "Completed");
 				frm.set_value("end_time", frappe.datetime.now_datetime());
 				await frm.save();
 
-				frappe.show_alert({ message: "Session Completed", indicator: "blue" });
+				frappe.show_alert({ message: __("Session Completed"), indicator: "blue" });
 			});
 		}
 	},
