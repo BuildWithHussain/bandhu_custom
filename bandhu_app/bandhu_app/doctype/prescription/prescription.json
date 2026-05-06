@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "BP-.YYYY.-.#####",
+ "creation": "2026-04-11 11:28:11.843635",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "medicines",
+  "dosage_frequency",
+  "duration_days",
+  "quantity",
+  "column_break_nswb",
+  "source",
+  "dispensed",
+  "instructions",
+  "dispensed_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "medicines",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Medicines",
+   "options": "Item"
+  },
+  {
+   "fieldname": "dosage_frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Dosage Frequency",
+   "options": "OD\nBD\nTID\nQID"
+  },
+  {
+   "fieldname": "duration_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Duration Days"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_nswb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Source",
+   "options": "In-House\nExternal"
+  },
+  {
+   "default": "0",
+   "fieldname": "dispensed",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Dispensed?"
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Instructions"
+  },
+  {
+   "fieldname": "dispensed_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Dispensed by?",
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Nurse\"]]",
+   "options": "Healthcare Practitioner"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-05 21:09:13.743541",
+ "modified_by": "Administrator",
+ "module": "Bandhu App",
+ "name": "Prescription",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

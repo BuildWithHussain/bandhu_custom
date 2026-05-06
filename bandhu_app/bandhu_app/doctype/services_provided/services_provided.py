@@ -5,7 +5,7 @@
 from frappe.model.document import Document
 
 
-class StaffLog(Document):
+class ServicesProvided(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -14,10 +14,11 @@ class StaffLog(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		check_in: DF.Datetime
-		check_out: DF.Datetime
-		clinic_session: DF.Link
-		user: DF.Link
+		notes: DF.SmallText | None
+		parent: DF.Data
+		parentfield: DF.Data
+		parenttype: DF.Data
+		service_name: DF.Data | None
 	# end: auto-generated types
 
 	pass

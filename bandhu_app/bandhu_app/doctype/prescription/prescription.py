@@ -5,7 +5,7 @@
 from frappe.model.document import Document
 
 
-class StaffLog(Document):
+class Prescription(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -14,10 +14,17 @@ class StaffLog(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		check_in: DF.Datetime
-		check_out: DF.Datetime
-		clinic_session: DF.Link
-		user: DF.Link
+		dispensed: DF.Check
+		dispensed_by: DF.Link | None
+		dosage_frequency: DF.Literal["OD", "BD", "TID", "QID"]
+		duration_days: DF.Int
+		instructions: DF.SmallText | None
+		medicines: DF.Link | None
+		parent: DF.Data
+		parentfield: DF.Data
+		parenttype: DF.Data
+		quantity: DF.Int
+		source: DF.Literal["In-House", "External"]
 	# end: auto-generated types
 
 	pass
