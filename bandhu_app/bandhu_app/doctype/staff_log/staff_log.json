@@ -30,14 +30,12 @@
   {
    "fieldname": "check_in",
    "fieldtype": "Datetime",
-   "label": "Check In",
-   "reqd": 1
+   "label": "Check In"
   },
   {
    "fieldname": "check_out",
    "fieldtype": "Datetime",
-   "label": "Check Out",
-   "reqd": 1
+   "label": "Check Out"
   },
   {
    "fieldname": "column_break_rrhg",
@@ -47,7 +45,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-06 08:59:24.909547",
+ "modified": "2026-05-06 16:22:12.928170",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Staff Log",

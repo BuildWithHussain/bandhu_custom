@@ -31,7 +31,7 @@
   {
    "fieldname": "encounter",
    "fieldtype": "Link",
-   "label": "Encounter",
+   "label": "Clinic Visit",
    "options": "Patient Encounter"
   },
   {
@@ -74,13 +74,14 @@
    "fieldname": "recorded_by",
    "fieldtype": "Link",
    "label": "Recorded By",
-   "options": "User"
+   "link_filters": "[[\"Healthcare Practitioner\",\"custom_role\",\"=\",\"Nurse\"]]",
+   "options": "Healthcare Practitioner"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-16 07:34:25.646870",
+ "modified": "2026-05-06 14:19:11.589294",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Test Result",
