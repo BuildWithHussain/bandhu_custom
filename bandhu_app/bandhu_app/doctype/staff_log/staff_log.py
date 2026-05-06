@@ -14,10 +14,10 @@ class StaffLog(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		check_in: DF.Datetime | None
-		check_out: DF.Datetime | None
-		clinic_session: DF.Link | None
-		user: DF.Link | None
+		check_in: DF.Datetime
+		check_out: DF.Datetime
+		clinic_session: DF.Link
+		user: DF.Link
 	# end: auto-generated types
 
 	pass
