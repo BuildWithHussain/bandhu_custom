@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:project",
  "creation": "2026-04-15 18:36:21.875420",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -19,7 +20,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Project",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "funding_source",
@@ -58,10 +60,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-18 07:58:10.762574",
+ "modified": "2026-05-06 16:57:19.436265",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Bandhu Projects",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

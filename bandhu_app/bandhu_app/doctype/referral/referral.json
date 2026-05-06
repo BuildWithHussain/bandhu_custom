@@ -1,7 +1,6 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "REF-.YYYY.-.#####",
  "creation": "2026-04-11 21:03:19.907745",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -133,9 +132,9 @@
   {
    "fetch_from": "patient_encounter.custom_project",
    "fieldname": "project",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Project",
-   "options": "Bandhu Projects"
+   "read_only": 1
   },
   {
    "fetch_from": "patient_encounter.custom_clinic_session",
@@ -164,7 +163,7 @@
    "link_fieldname": "patient"
   }
  ],
- "modified": "2026-04-24 10:15:25.750897",
+ "modified": "2026-05-06 16:52:18.880760",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Referral",
