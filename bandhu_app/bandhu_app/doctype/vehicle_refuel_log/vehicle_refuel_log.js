@@ -7,19 +7,18 @@
 // 	},
 // });
 
-frappe.ui.form.on('Vehicle Refuel Log', {
+frappe.ui.form.on("Vehicle Refuel Log", {
+	quantity: calculate_amount,
+	rate: calculate_amount,
 
-    quantity: calculate_amount,
-    rate: calculate_amount,
-
-    validate: function(frm) {
-        calculate_amount(frm);
-    }
+	validate: function (frm) {
+		calculate_amount(frm);
+	},
 });
 
 function calculate_amount(frm) {
-    if (frm.doc.quantity && frm.doc.rate) {
-        let amount = frm.doc.quantity * frm.doc.rate;
-        frm.set_value('amount', amount);
-    }
+	if (frm.doc.quantity && frm.doc.rate) {
+		let amount = frm.doc.quantity * frm.doc.rate;
+		frm.set_value("amount", amount);
+	}
 }
