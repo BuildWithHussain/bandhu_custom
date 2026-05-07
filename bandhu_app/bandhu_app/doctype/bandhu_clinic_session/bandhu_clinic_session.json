@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "CS-.YY.-.MM.-.DD.-.SITE.-.UNIT.-.###",
+ "autoname": "CS-.YY.-.MM.-.DD.-.SITE.-.###",
  "creation": "2026-04-13 08:14:19.128869",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -155,7 +155,7 @@
    "link_fieldname": "custom_clinic_session"
   }
  ],
- "modified": "2026-04-24 16:58:21.203224",
+ "modified": "2026-05-06 21:16:47.235741",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Bandhu Clinic Session",
