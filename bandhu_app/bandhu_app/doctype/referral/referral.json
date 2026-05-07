@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "REF-.YYYY.-.#####",
  "creation": "2026-04-11 21:03:19.907745",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -163,7 +164,7 @@
    "link_fieldname": "patient"
   }
  ],
- "modified": "2026-05-06 16:52:18.880760",
+ "modified": "2026-05-07 08:22:57.596769",
  "modified_by": "Administrator",
  "module": "Bandhu App",
  "name": "Referral",
