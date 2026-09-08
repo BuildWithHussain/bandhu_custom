@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Coalesce
-from frappe.utils import getdate
+from frappe.utils import date_diff, getdate
 
 from bandhu_app.bandhu_app.utils.patient import age_group
 from bandhu_app.bandhu_app.utils.session import fetch_map
@@ -23,12 +23,20 @@ def execute(filters=None):
 	return get_columns(), rows, None, build_chart(rows), build_summary(rows)
 
 
+MAX_REPORT_DAYS = 366
+
+
 def validate_filters(filters):
 	if not (filters.from_date and filters.to_date):
 		frappe.throw(_("From Date and To Date are required."))
 
 	if getdate(filters.from_date) > getdate(filters.to_date):
 		frappe.throw(_("From Date cannot be after To Date."))
+
+	# Every camp in the period is fetched with its child-table counts, so an unbounded span is
+	# one request that grows without limit as the programme runs.
+	if date_diff(filters.to_date, filters.from_date) > MAX_REPORT_DAYS:
+		frappe.throw(_("Choose a period of {0} days or less.").format(MAX_REPORT_DAYS))
 
 
 def fetch_tests(filters) -> list:
