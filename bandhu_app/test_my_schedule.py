@@ -20,6 +20,7 @@ class IntegrationTestMySchedule(IntegrationTestCase):
 		baseline = ensure_baseline_fixtures()
 		cls.clinic = baseline["clinic"]
 		cls.site = baseline["site"]
+		cls.unit = baseline["unit"]
 
 		cls.doctor = cls.make_practitioner("Schedule Test Doctor", "Doctor", "9800000001")
 		cls.nurse = cls.make_practitioner("Schedule Test Nurse", "Nurse", "9800000002")
@@ -48,6 +49,7 @@ class IntegrationTestMySchedule(IntegrationTestCase):
 			"date": date,
 			"clinic": self.clinic,
 			"site": self.site,
+			"unit": self.unit,
 			"assigned_doctor": self.doctor,
 			"assigned_nurse": self.nurse,
 			"assigned_driver": self.driver,

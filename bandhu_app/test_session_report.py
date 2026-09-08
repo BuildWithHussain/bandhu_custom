@@ -22,6 +22,7 @@ class IntegrationTestSessionReport(IntegrationTestCase):
 		cls.project = baseline["project"]
 		cls.appointment_type = baseline["appointment_type"]
 		cls.item = baseline["item"]
+		cls.unit = baseline["unit"]
 		cls.gender = frappe.get_all("Gender", limit=1, pluck="name")[0]
 
 		cls.doctor = cls._make_practitioner("Test Report Doctor")
@@ -79,6 +80,7 @@ class IntegrationTestSessionReport(IntegrationTestCase):
 					"date": date,
 					"clinic": self.clinic,
 					"site": site or self.site,
+					"unit": self.unit,
 					"project": self.project,
 					"assigned_doctor": self.doctor,
 					"status": status,

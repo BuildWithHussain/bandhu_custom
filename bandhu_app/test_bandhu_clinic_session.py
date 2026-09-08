@@ -19,6 +19,7 @@ class IntegrationTestBandhuClinicSession(IntegrationTestCase):
 		baseline = ensure_baseline_fixtures()
 		cls.clinic = baseline["clinic"]
 		cls.site = baseline["site"]
+		cls.unit = baseline["unit"]
 		cls.project = baseline["project"]
 
 		cls.doctor = cls._make_practitioner("Role Test Doctor", "Doctor")
@@ -46,6 +47,7 @@ class IntegrationTestBandhuClinicSession(IntegrationTestCase):
 			"date": today(),
 			"clinic": self.clinic,
 			"site": self.site,
+			"unit": self.unit,
 			"project": self.project,
 		}
 		fields.update(overrides)
