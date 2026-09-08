@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, getdate
+from frappe.utils import cint, date_diff, flt, getdate
 
 from bandhu_app.bandhu_app.utils.clinic_stats import (
 	count_encounters,
@@ -26,12 +26,20 @@ def execute(filters=None):
 	return get_columns(filters), rows, None, build_chart(rows), build_summary(rows)
 
 
+MAX_REPORT_DAYS = 366
+
+
 def validate_filters(filters):
 	if not (filters.from_date and filters.to_date):
 		frappe.throw(_("From Date and To Date are required."))
 
 	if getdate(filters.from_date) > getdate(filters.to_date):
 		frappe.throw(_("From Date cannot be after To Date."))
+
+	# Every camp in the period is fetched with its child-table counts, so an unbounded span is
+	# one request that grows without limit as the programme runs.
+	if date_diff(filters.to_date, filters.from_date) > MAX_REPORT_DAYS:
+		frappe.throw(_("Choose a period of {0} days or less.").format(MAX_REPORT_DAYS))
 
 	group_by = filters.get("group_by")
 	if group_by and group_by not in GROUP_BY_FIELD:
