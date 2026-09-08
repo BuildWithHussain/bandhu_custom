@@ -1,5 +1,37 @@
 import frappe
+from frappe import _
+from frappe.core.doctype.access_log.access_log import make_access_log
 from frappe.utils import flt, getdate, today
+
+PATIENT_CARD_PRINT_FORMAT = "Bandhu Patient Card"
+
+
+def render_patient_card(patient: str, access_method: str) -> str:
+	"""Render one patient's printable card for a caller already authorised by other means.
+
+	Neither the CAD nor the Doctor role holds a Patient DocType permission, so /printview
+	refuses and rendering the format checks a print permission neither of them has.
+	`ignore_print_permissions` is Frappe's own way to render on behalf of a caller that has
+	been authorised elsewhere -- require_cad_access() on the CAD page, ownership of the
+	patient's encounter on the Doctor page. The card carries PII to a printer, so who
+	rendered which card stays answerable per patient in the access log.
+	"""
+	patient = (patient or "").strip()
+	if not frappe.db.exists("Patient", patient):
+		frappe.throw(_("Patient not found."), frappe.DoesNotExistError)
+
+	make_access_log(doctype="Patient", document=patient, method=access_method)
+
+	frappe.flags.ignore_print_permissions = True
+	try:
+		return frappe.get_print(
+			"Patient",
+			patient,
+			print_format=PATIENT_CARD_PRINT_FORMAT,
+			no_letterhead=True,
+		)
+	finally:
+		frappe.flags.ignore_print_permissions = False
 
 
 def compact_age(dob) -> str:
