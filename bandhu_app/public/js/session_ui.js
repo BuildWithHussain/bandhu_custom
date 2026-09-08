@@ -22,6 +22,87 @@ frappe.provide("bandhu.session_ui");
 		}
 	}
 
+	// Server side, bandhu_app.bandhu_app.utils.realtime pushes this whenever a camp moves, into
+	// that camp's own document room. Each board answers it by re-reading its own queues.
+	const BOARD_UPDATE_EVENT = "bandhu_board_update";
+	const BOARD_UPDATE_DOCTYPE = "Bandhu Clinic Session";
+
+	// A doctor completing three patients in a row is one re-read for everyone else, not three.
+	const BOARD_UPDATE_DELAY = 500;
+
+	let background_refresh_depth = 0;
+	const subscribed_routes = new Set();
+	const subscribed_rooms = new Map();
+
+	// The loaders freeze the screen so a tap during a slow fetch cannot land on a queue that is
+	// about to be replaced. A refresh nobody asked for must not do that -- a grey overlay every
+	// time somebody else acts is worse than the stale row it would prevent.
+	function freeze() {
+		if (!background_refresh_depth) frappe.dom.freeze();
+	}
+
+	function unfreeze() {
+		if (!background_refresh_depth) frappe.dom.unfreeze();
+	}
+
+	// `refresh` is the page's own loader; `route` is its desk route. Desk keeps a page's DOM and
+	// module state alive after routing away, so a board nobody is looking at leaves the work to
+	// on_page_show instead of fetching for a hidden screen.
+	// The push goes to the camp's own document room, so a board has to join that room and leave
+	// it again when the camp changes. Called on every render, not once, for that reason.
+	function join_camp_room(route, session) {
+		if (subscribed_rooms.get(route) === session) return;
+
+		const previous = subscribed_rooms.get(route);
+		if (previous) frappe.realtime.doc_unsubscribe(BOARD_UPDATE_DOCTYPE, previous);
+		if (session) frappe.realtime.doc_subscribe(BOARD_UPDATE_DOCTYPE, session);
+
+		subscribed_rooms.set(route, session);
+	}
+
+	function subscribe_to_board_updates(route, current_session, refresh) {
+		join_camp_room(route, current_session());
+
+		// This file loads through frappe.require, so a page can only subscribe once it is already
+		// rendering -- which is every time it is shown, not once at load.
+		if (subscribed_routes.has(route)) return;
+		subscribed_routes.add(route);
+
+		let timer = null;
+		let deferred = false;
+
+		async function apply() {
+			timer = null;
+			// Re-rendering underneath an open dialog throws away whatever is half-entered in it.
+			if (frappe.get_route_str() !== route || $(".modal:visible").length) {
+				deferred = true;
+				return;
+			}
+
+			deferred = false;
+			background_refresh_depth += 1;
+			try {
+				await refresh();
+			} finally {
+				background_refresh_depth -= 1;
+			}
+		}
+
+		function schedule(message) {
+			if (message && message.actor === frappe.session.user) return;
+
+			const session = current_session();
+			if (session && message && message.clinic_session !== session) return;
+			if (timer) return;
+			timer = setTimeout(apply, BOARD_UPDATE_DELAY);
+		}
+
+		frappe.realtime.on(BOARD_UPDATE_EVENT, schedule);
+		$(document).on("hidden.bs.modal", () => {
+			if (deferred) schedule();
+		});
+	}
+
 	function format_load_error() {
 		return (
 			'<div class="bandhu-load-error">' +
@@ -40,6 +121,18 @@ frappe.provide("bandhu.session_ui");
 			'<div class="welcome"><h3>' +
 			__("Welcome, {0}", [frappe.utils.escape_html(frappe.user_info().fullname)]) +
 			"</h3></div>"
+		);
+	}
+
+	// Desk's own icon group in the page header, which is where every other Desk page puts
+	// refresh. Called from on_page_load, so it survives the re-renders that replace page.main.
+	function add_refresh_icon(page, refresh) {
+		if (page.bandhu_refresh_icon) return;
+		page.bandhu_refresh_icon = page.add_action_icon(
+			"refresh",
+			() => refresh(),
+			"",
+			__("Refresh")
 		);
 	}
 
@@ -128,28 +221,23 @@ frappe.provide("bandhu.session_ui");
 	// dialog keeps following Desk across a Frappe upgrade instead of drifting. The label carries
 	// the weight and the glyph because it is what a nurse scans the column for; the value is read
 	// only once the right label has been found.
-	function format_detail_field(label, value, icon_name) {
+	function format_detail_field(label, value, icon_name, fixed_width) {
 		if (value === null || value === undefined || value === "") return "";
 		return (
-			'<div class="col-6 col-md-4 mb-4 flex items-start gap-2">' +
+			'<div class="col-6 col-md-4 bandhu-detail">' +
 			// The glyph hangs in its own gutter so the label and the value it belongs to keep a
 			// single left edge. Inline, it indented the label off the value beneath it and gave
-			// every field two ragged edges. `margin: 0` because Desk's own .icon ships
-			// `margin: 0 auto`, which in a flex row flings it away from what it labels.
+			// every field two ragged edges.
 			(icon_name
-				? frappe.utils.icon(
-						icon_name,
-						"sm",
-						"",
-						"margin: 1px 0 0",
-						"current-color shrink-0"
-				  )
+				? frappe.utils.icon(icon_name, "sm", "", "", "current-color bandhu-detail-icon")
 				: "") +
-			'<div class="min-w-0">' +
-			'<div class="text-xs-semibold text-ink-gray-7 mb-1">' +
+			'<div class="bandhu-detail-text">' +
+			'<div class="bandhu-detail-label">' +
 			frappe.utils.escape_html(label) +
 			"</div>" +
-			'<div class="text-base text-ink-gray-9">' +
+			'<div class="bandhu-detail-value' +
+			(fixed_width ? " bandhu-fixed-width" : "") +
+			'">' +
 			frappe.utils.escape_html(String(value)) +
 			"</div></div></div>"
 		);
@@ -164,9 +252,9 @@ frappe.provide("bandhu.session_ui");
 	// counting across columns to find the one being asked.
 	function format_identity_details(patient) {
 		return format_detail_row(
-			format_detail_field(__("Clinic ID"), patient.custom_bandhu_id, "id-card") +
-				format_detail_field(__("ABHA ID"), patient.custom_abha_id, "badge-check") +
-				format_detail_field(__("Mobile"), patient.mobile, "phone") +
+			format_detail_field(__("Clinic ID"), patient.custom_bandhu_id, "id-card", true) +
+				format_detail_field(__("ABHA ID"), patient.custom_abha_id, "badge-check", true) +
+				format_detail_field(__("Mobile Number"), patient.mobile, "phone", true) +
 				// The endpoint returns the stored date; every other Bandhu screen shows dates
 				// in the user's own format, so printing it raw here is the odd one out.
 				format_detail_field(
@@ -271,7 +359,7 @@ frappe.provide("bandhu.session_ui");
 
 	function format_note(note) {
 		return (
-			'<div class="text-xs text-muted mt-1">' +
+			'<div class="bandhu-detail-note">' +
 			__("Note") +
 			": " +
 			frappe.utils.escape_html(note) +
@@ -280,7 +368,7 @@ frappe.provide("bandhu.session_ui");
 	}
 
 	function format_row_open() {
-		return '<div class="flex items-baseline justify-between gap-3 py-1.5">';
+		return '<div class="bandhu-line">';
 	}
 
 	// `shared_note` is the doctor's one ordering note when it covers every row (see
@@ -291,11 +379,11 @@ frappe.provide("bandhu.session_ui");
 				const own_note = (test.notes || "").trim();
 				return (
 					format_row_open() +
-					'<div class="min-w-0"><div class="text-sm text-ink-gray-8">' +
+					'<div class="bandhu-line-main"><div class="bandhu-line-title">' +
 					frappe.utils.escape_html(test.test_name) +
 					"</div>" +
 					(own_note && own_note !== shared_note ? format_note(own_note) : "") +
-					'</div><div class="shrink-0">' +
+					'</div><div class="bandhu-line-side">' +
 					format_test_result(test) +
 					"</div></div>"
 				);
@@ -315,16 +403,16 @@ frappe.provide("bandhu.session_ui");
 					.join(" ");
 				return (
 					format_row_open() +
-					'<div class="min-w-0"><div class="text-sm text-ink-gray-8">' +
+					'<div class="bandhu-line-main"><div class="bandhu-line-title">' +
 					frappe.utils.escape_html(prescription.medicines) +
 					(schedule
-						? '<span class="text-xs text-muted ms-2">' +
+						? '<span class="bandhu-line-schedule">' +
 						  frappe.utils.escape_html(schedule) +
 						  "</span>"
 						: "") +
 					"</div>" +
 					(prescription.instructions ? format_note(prescription.instructions) : "") +
-					'</div><div class="shrink-0">' +
+					'</div><div class="bandhu-line-side">' +
 					(prescription.dispensed
 						? format_badge(__("Dispensed"), "green", "subtle")
 						: format_badge(__("Pending"), "amber", "subtle")) +
@@ -338,7 +426,7 @@ frappe.provide("bandhu.session_ui");
 		return (diagnosis || [])
 			.map(
 				(entry) =>
-					'<div class="py-1.5"><div class="text-sm text-ink-gray-8">' +
+					'<div class="bandhu-line"><div class="bandhu-line-title">' +
 					frappe.utils.escape_html(entry.diagnosis_name) +
 					"</div>" +
 					(entry.notes ? format_note(entry.notes) : "") +
@@ -350,10 +438,10 @@ frappe.provide("bandhu.session_ui");
 	function format_section(title, body, lead) {
 		if (!body) return "";
 		return (
-			'<div class="mt-4"><div class="text-base-semibold text-ink-gray-8 mb-2">' +
+			'<div class="bandhu-section"><div class="bandhu-section-title">' +
 			frappe.utils.escape_html(title) +
 			"</div>" +
-			(lead ? '<div class="text-sm text-muted mb-2">' + lead + "</div>" : "") +
+			(lead ? '<div class="bandhu-section-lead">' + lead + "</div>" : "") +
 			body +
 			"</div>"
 		);
@@ -363,13 +451,14 @@ frappe.provide("bandhu.session_ui");
 	function format_patient_details(patient, encounter) {
 		const shared_note = (encounter.shared_test_note || "").trim();
 		return (
+			'<div class="bandhu-details">' +
 			format_section(__("Registration Details"), format_identity_details(patient)) +
 			format_section(__("Vitals"), format_vitals_details(patient, encounter)) +
 			format_section(__("Origin & Work"), format_origin_details(patient)) +
 			format_section(
-				__("Chief Complaint"),
+				__("Patient Complaints"),
 				encounter.custom_chief_complaints
-					? '<div class="text-sm text-ink-gray-8">' +
+					? '<div class="bandhu-section-text">' +
 							frappe.utils.escape_html(encounter.custom_chief_complaints) +
 							"</div>"
 					: ""
@@ -377,7 +466,7 @@ frappe.provide("bandhu.session_ui");
 			format_section(
 				__("Past History"),
 				encounter.custom_past_history
-					? '<div class="text-sm text-ink-gray-8">' +
+					? '<div class="bandhu-section-text">' +
 							frappe.utils.escape_html(encounter.custom_past_history) +
 							"</div>"
 					: ""
@@ -385,7 +474,7 @@ frappe.provide("bandhu.session_ui");
 			format_section(
 				__("Allergy History"),
 				encounter.custom_allergy_history
-					? '<div class="text-sm text-ink-gray-8">' +
+					? '<div class="bandhu-section-text">' +
 							frappe.utils.escape_html(encounter.custom_allergy_history) +
 							"</div>"
 					: ""
@@ -399,7 +488,8 @@ frappe.provide("bandhu.session_ui");
 				__("Prescriptions"),
 				format_prescription_rows(encounter.prescriptions)
 			) +
-			format_section(__("Diagnosis"), format_diagnosis_rows(encounter.diagnosis))
+			format_section(__("Diagnosis"), format_diagnosis_rows(encounter.diagnosis)) +
+			"</div>"
 		);
 	}
 
@@ -463,8 +553,12 @@ frappe.provide("bandhu.session_ui");
 
 	Object.assign(bandhu.session_ui, {
 		refresh_page,
+		subscribe_to_board_updates,
+		freeze,
+		unfreeze,
 		format_load_error,
 		format_welcome,
+		add_refresh_icon,
 		format_session_info,
 		format_clock_time,
 		format_planned_window,

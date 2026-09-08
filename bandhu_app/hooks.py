@@ -27,7 +27,7 @@ required_apps = ["erpnext", "healthcare"]
 # include js, css files in header of desk.html
 # Raw asset paths are not versioned by Frappe's include_script/include_style —
 # bump ?v= on every edit or browsers keep the old file.
-app_include_css = ["/assets/bandhu_app/css/desk.css?v=2"]
+app_include_css = ["/assets/bandhu_app/css/desk.css?v=11"]
 app_include_js = [
 	"/assets/bandhu_app/js/session_ui.js?v=2",
 	"/assets/bandhu_app/js/workspace_redirect.js?v=2",
@@ -271,6 +271,9 @@ doc_events = {
 	},
 	"Patient Encounter": {
 		"validate": "bandhu_app.bandhu_app.utils.patient_encounter.validate_workflow_state",
-		"on_update": "bandhu_app.bandhu_app.utils.patient_encounter.sync_to_queue",
+		"on_update": [
+			"bandhu_app.bandhu_app.utils.patient_encounter.sync_to_queue",
+			"bandhu_app.bandhu_app.utils.realtime.broadcast_encounter_change",
+		],
 	},
 }
