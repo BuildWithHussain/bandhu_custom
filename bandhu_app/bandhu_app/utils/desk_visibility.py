@@ -14,6 +14,21 @@ import frappe
 # parent, so hiding the parent hides the branch.
 ALLOWED_ROLES = ["System Manager"]
 
+# Custom desk-icon artwork, keyed by Workspace name. CAD/Doctor/Nurse get a role-colored
+# glyph — plain circle, no name, no photo, so the same image is correct for every
+# practitioner in that role. Admin isn't a role (its Desktop Icon is already restricted to
+# System Manager above), so it gets the same neutral badge shape in a plain grey, not a role
+# color. Frappe's own Icon fieldtype only picks from its bundled sprite set;
+# Desktop Icon.icon_image (Attach) is the one field that renders a plain <img> instead
+# (frappe/public/js/frappe/ui/desktop_icon.html), which is why this targets Desktop Icon
+# and not Workspace.icon.
+DESK_ICON_IMAGE_BY_WORKSPACE = {
+	"CAD": "/assets/bandhu_app/images/desk_icons/cad.svg",
+	"Doctor": "/assets/bandhu_app/images/desk_icons/doctor.svg",
+	"Nurse": "/assets/bandhu_app/images/desk_icons/nurse.svg",
+	"Admin": "/assets/bandhu_app/images/desk_icons/admin.svg",
+}
+
 
 def restrict_other_app_desktop_icons():
 	"""Hide other apps' top-level desk icons from everyone but System Manager."""
@@ -79,6 +94,7 @@ def sync_bandhu_desktop_icons():
 	workspaces = frappe.get_all(
 		"Workspace", filters={"module": "Bandhu App", "public": 1}, fields=["name", "icon"]
 	)
+	any_icon_changed = False
 	for workspace in workspaces:
 		icon_name = frappe.db.get_value("Desktop Icon", {"link_to": workspace.name, "icon_type": "Link"})
 		if not icon_name:
@@ -88,11 +104,26 @@ def sync_bandhu_desktop_icons():
 			"Has Role", filters={"parenttype": "Workspace", "parent": workspace.name}, pluck="role"
 		)
 		icon = frappe.get_doc("Desktop Icon", icon_name)
+		image_path = DESK_ICON_IMAGE_BY_WORKSPACE.get(workspace.name)
 		roles_match = {row.role for row in icon.roles} == set(roles)
 		icon_matches = icon.icon == workspace.icon
-		if roles_match and icon_matches:
+		image_matches = not image_path or icon.icon_image == image_path
+		if roles_match and icon_matches and image_matches:
 			continue
 
 		icon.set("roles", [{"role": role} for role in sorted(roles)])
 		icon.icon = workspace.icon
+		if image_path:
+			icon.icon_image = image_path
 		icon.save(ignore_permissions=True)
+		any_icon_changed = True
+
+	if any_icon_changed:
+		# Desktop Icon.on_update only busts the *global* "desktop_icons" cache for
+		# standard=1 icons (frappe/desk/doctype/desktop_icon/desktop_icon.py) — for
+		# everyone else, including ours, it clears only the saving icon's own `owner`
+		# from the per-user cache. That leaves every other viewer's cached copy stale:
+		# a CAD/Doctor/Nurse tile change was invisible to Administrator's own `/desk`
+		# until they happened to also be the `owner`. Clearing the whole hash matches
+		# what Frappe itself does for standard icons.
+		frappe.cache.delete_key("desktop_icons")
