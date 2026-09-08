@@ -1,8 +1,10 @@
 import frappe
 from frappe import _
+from frappe.query_builder.functions import Count
 from frappe.utils import flt
 
 from bandhu_app.bandhu_app.utils.patient_details import get_patient_details, get_session_encounters
+from bandhu_app.bandhu_app.utils.realtime import publish_board_update
 from bandhu_app.bandhu_app.utils.session import find_active_session, find_upcoming_sessions
 
 
@@ -131,6 +133,7 @@ def start_session(session_name: str) -> None:
 		session_name,
 		{"status": "In Progress", "start_time": frappe.utils.now_datetime()},
 	)
+	publish_board_update(session_name)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -145,6 +148,7 @@ def end_session(session_name: str) -> None:
 		session_name,
 		{"status": "Completed", "end_time": frappe.utils.now_datetime()},
 	)
+	publish_board_update(session_name)
 
 
 @frappe.whitelist()
@@ -163,6 +167,35 @@ def get_patients_for_medicines(session_name: str) -> list:
 def get_completed_patients(session_name: str) -> list:
 	require_session_access(session_name)
 	return get_session_encounters(session_name, "Completed")
+
+
+# The nurse only ever sees the two states that are hers, so between batches the page went blank
+# while a camp of forty was running around her. This is the shape of the camp in one line.
+CAMP_PROGRESS_STATES = {
+	"registered": "Waiting for Doctor",
+	"with_doctor": "Awaiting Doctor Review",
+	"for_tests": "Awaiting Test",
+	"for_medicines": "Awaiting Medicine",
+	"completed": "Completed",
+}
+
+
+@frappe.whitelist()
+def get_camp_progress(session_name: str) -> dict:
+	require_session_access(session_name)
+
+	# v16 refuses an aggregate written as a string in `fields`, so this goes through the query
+	# builder rather than five separate frappe.db.count calls.
+	encounter = frappe.qb.DocType("Patient Encounter")
+	counts = (
+		frappe.qb.from_(encounter)
+		.select(encounter.custom_workflow_state, Count("*").as_("total"))
+		.where(encounter.custom_clinic_session == session_name)
+		.groupby(encounter.custom_workflow_state)
+	).run(as_dict=True)
+	by_state = {row.custom_workflow_state: row.total for row in counts}
+
+	return {key: by_state.get(state, 0) for key, state in CAMP_PROGRESS_STATES.items()}
 
 
 @frappe.whitelist()
@@ -186,6 +219,15 @@ def submit_test_results(encounter: str, results: list | str) -> None:
 		row.result_type = result.get("result_type")
 		row.result_value = result.get("result_value")
 
+	# Sending a patient back with a blank result puts an ordered test in front of the doctor
+	# marked reviewed and carrying nothing. "Not Done" is the honest way to say a test could not
+	# be run, so there is no reason left to leave one empty.
+	for row in doc.custom_test_instructions:
+		if not row.result_type:
+			frappe.throw(_("{0} has no result. Choose Not Done if the test could not be run.").format(row.test_name))
+		if row.result_type == "Value" and not (row.result_value or "").strip():
+			frappe.throw(_("{0} is a value test and needs a reading.").format(row.test_name))
+
 	doc.custom_workflow_state = "Awaiting Doctor Review"
 	doc.save(ignore_permissions=True)
 
@@ -205,12 +247,31 @@ def record_vitals(
 	if doc.custom_workflow_state not in ("Awaiting Test", "Awaiting Medicine"):
 		frappe.throw(_("Vitals can only be recorded while the patient is with the nurse."))
 
-	values = [height_cm, weight_kg, temperature, pulse_rate, spo2, bp_systolic, bp_diastolic]
-	if not any(value is not None for value in values):
+	measurements = [
+		(_("Height"), height_cm, 30, 250),
+		(_("Weight"), weight_kg, 1, 300),
+		(_("Temperature"), temperature, 90, 110),
+		(_("Pulse"), pulse_rate, 20, 250),
+		(_("SpO2"), spo2, 50, 100),
+		(_("BP systolic"), bp_systolic, 50, 300),
+		(_("BP diastolic"), bp_diastolic, 30, 200),
+	]
+	if not any(value is not None for _label, value, _low, _high in measurements):
 		frappe.throw(_("Enter at least one vital sign."))
-	for value in values:
-		if value is not None and flt(value) <= 0:
+
+	for label, value, low, high in measurements:
+		if value is None:
+			continue
+		if flt(value) <= 0:
 			frappe.throw(_("Vital signs must be positive numbers."))
+		if not low <= flt(value) <= high:
+			frappe.throw(_("{0} of {1} is outside what a person can record. Check the entry.").format(label, value))
+
+	# Half a blood pressure is not a reading, and the old code dropped it without a word.
+	if (bp_systolic is None) != (bp_diastolic is None):
+		frappe.throw(_("Blood pressure needs both the systolic and the diastolic number."))
+	if bp_systolic is not None and flt(bp_diastolic) >= flt(bp_systolic):
+		frappe.throw(_("The systolic number has to be the higher of the two."))
 
 	if height_cm is not None:
 		doc.custom_height = height_cm
