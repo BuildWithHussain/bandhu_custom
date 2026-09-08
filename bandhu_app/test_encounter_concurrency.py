@@ -29,6 +29,7 @@ class TestEncounterConcurrency(IntegrationTestCase):
 		baseline = ensure_baseline_fixtures()
 		cls.clinic = baseline["clinic"]
 		cls.site = baseline["site"]
+		cls.unit = baseline["unit"]
 		cls.project = baseline["project"]
 		cls.item = baseline["item"]
 		cls.gender = frappe.get_all("Gender", limit=1, pluck="name")[0]
@@ -84,6 +85,7 @@ class TestEncounterConcurrency(IntegrationTestCase):
 					"date": today(),
 					"clinic": self.clinic,
 					"site": self.site,
+					"unit": self.unit,
 					"project": self.project,
 					"assigned_driver": self.driver,
 					"assigned_doctor": self.doctor,

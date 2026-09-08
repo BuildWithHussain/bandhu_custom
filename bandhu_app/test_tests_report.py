@@ -21,6 +21,7 @@ class IntegrationTestTestsReport(IntegrationTestCase):
 		cls.clinic = baseline["clinic"]
 		cls.project = baseline["project"]
 		cls.appointment_type = baseline["appointment_type"]
+		cls.unit = baseline["unit"]
 		cls.state = baseline["state"]
 
 		cls.doctor = (
@@ -72,6 +73,7 @@ class IntegrationTestTestsReport(IntegrationTestCase):
 					"date": date or today(),
 					"clinic": self.clinic,
 					"site": self.site,
+					"unit": self.unit,
 					"project": self.project,
 					"assigned_doctor": self.doctor,
 					"status": "In Progress",
@@ -182,6 +184,7 @@ class IntegrationTestTestsReport(IntegrationTestCase):
 					"from_date": today(),
 					"to_date": today(),
 					"site": self.site,
+					"unit": self.unit,
 				}
 			)[4]
 		}
