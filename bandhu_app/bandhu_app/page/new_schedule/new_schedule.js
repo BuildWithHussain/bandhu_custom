@@ -457,11 +457,9 @@ function render(page) {
 			'"><div>' +
 			body +
 			'<div class="actions">' +
-			'<button class="btn btn-default wizard-back"' +
-			(step === 0 ? " disabled" : "") +
-			">" +
-			__("Back") +
-			"</button>" +
+			(step === 0
+				? ""
+				: '<button class="btn btn-default wizard-back">' + __("Back") + "</button>") +
 			(step === STEPS.length - 1
 				? '<button class="btn btn-primary wizard-create">' +
 				  __("Create Schedule") +
