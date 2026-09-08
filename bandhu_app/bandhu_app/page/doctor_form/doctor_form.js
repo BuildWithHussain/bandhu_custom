@@ -1,6 +1,7 @@
 /* global bandhu */
 
 const SESSION_UI_ASSET = "/assets/bandhu_app/js/session_ui.js";
+const MAX_PATIENTS_WITH_DOCTOR = 3;
 
 let encountersByName = {};
 let testOptions = null;
@@ -31,7 +32,7 @@ async function getPatientHistories(patients) {
 }
 
 async function loadDashboard(page) {
-	frappe.dom.freeze();
+	bandhu.session_ui.freeze();
 	let status;
 	try {
 		const response = await frappe.call({
@@ -39,7 +40,7 @@ async function loadDashboard(page) {
 		});
 		status = response.message || {};
 	} finally {
-		frappe.dom.unfreeze();
+		bandhu.session_ui.unfreeze();
 	}
 
 	if (!status.has_session) {
@@ -70,7 +71,7 @@ function renderNoSession(page, message, upcoming) {
 }
 
 async function loadQueues(page) {
-	frappe.dom.freeze();
+	bandhu.session_ui.freeze();
 	let active, completed;
 	try {
 		const [activeResult, completedResult] = await Promise.all([
@@ -100,7 +101,7 @@ async function loadQueues(page) {
 			history: historyByPatient[encounter.patient] || [],
 		}));
 	} finally {
-		frappe.dom.unfreeze();
+		bandhu.session_ui.unfreeze();
 	}
 
 	encountersByName = Object.fromEntries(
@@ -109,28 +110,56 @@ async function loadQueues(page) {
 	renderDashboard(page, active, completed);
 }
 
+// Up to MAX_PATIENTS_WITH_DOCTOR (doctor_form.py) can be called in at once, oldest call first
+// so the person who has been sitting there longest stays at the top of the page.
+function splitQueues(active) {
+	const inRoom = active
+		.filter((encounter) => encounter.custom_called_at)
+		.sort((one, other) => (one.custom_called_at < other.custom_called_at ? -1 : 1));
+	const waiting = active.filter((encounter) => !encounter.custom_called_at);
+
+	// A patient back from the nurse has already been seen once and is minutes from leaving, so
+	// they go above people who have not been called yet; the nurse's own queue sits last because
+	// nothing on it is the doctor's to act on.
+	waiting.sort((one, other) => {
+		const rank = (encounter) => WAITING_ORDER[encounter.custom_workflow_state] ?? 3;
+		return rank(one) - rank(other) || (one.creation < other.creation ? -1 : 1);
+	});
+
+	return { inRoom, waiting };
+}
+
 function renderDashboard(page, active, completed) {
-	const html =
+	const { inRoom, waiting } = splitQueues(active);
+
+	page.main.html(
 		'<div class="doctor-dash">' +
-		bandhu.session_ui.format_welcome() +
-		(doctorSession ? bandhu.session_ui.format_session_info(doctorSession) : "") +
-		renderQueue(__("Active Patients"), active) +
-		renderCompletedQueue(__("Completed Today"), completed) +
-		"</div>";
-	page.main.html(html);
+			bandhu.session_ui.format_welcome() +
+			(doctorSession ? bandhu.session_ui.format_session_info(doctorSession) : "") +
+			renderFilterBar(active.length + completed.length) +
+			renderRoomSection(inRoom, waiting) +
+			renderWaitingSection(waiting) +
+			renderDoneSection(completed) +
+			"</div>"
+	);
 
 	page.main.off("click");
 
-	// The card body is the Details affordance -- a dedicated Details button sat as a fourth
-	// coequal action next to three clinical ones and wrapped the row.
-	page.main.on("click", ".patient-card-body", function () {
-		const encounter = $(this).closest(".patient-card").data("name");
-		dispatchDoctorAction(page, encounter, "details");
+	page.main.on("input", ".queue-filter-input", () => applyQueueFilter(page));
+
+	page.main.on("click", ".call-patient", function (event) {
+		event.stopPropagation();
+		callPatient(page, $(this).data("encounter"));
+	});
+
+	page.main.on("click", ".release-patient", function (event) {
+		event.stopPropagation();
+		releasePatient(page, $(this).data("encounter"));
 	});
 
 	page.main.on("click", ".visit-tag.repeat", function (event) {
 		event.stopPropagation();
-		const target = $(this).closest(".patient-card").find(".history-list");
+		const target = $(this).closest(".room-card").find(".history-list");
 		const indicator = $(this).find(".history-expand-indicator");
 		if (target.length) {
 			target.toggle();
@@ -138,19 +167,18 @@ function renderDashboard(page, active, completed) {
 		}
 	});
 
-	page.main.on("click", ".completed-row", function (event) {
-		if ($(event.target).closest(".completed-actions").length) return;
-		dispatchDoctorAction(page, $(this).data("name"), "details");
-	});
-
-	page.main.on("click", ".rail-more .open-record", function (event) {
-		event.stopPropagation();
-		frappe.set_route("Form", "Patient Encounter", $(this).data("name"));
+	page.main.on("click", ".queue-row .row-name", function () {
+		dispatchDoctorAction(page, $(this).closest(".queue-row").data("name"), "details");
 	});
 
 	page.main.on("click", ".rail-more .print-referral", function (event) {
 		event.stopPropagation();
 		printReferralLetter($(this).data("name"));
+	});
+
+	page.main.on("click", ".rail-more .print-card", function (event) {
+		event.stopPropagation();
+		printPatientCard($(this).data("name"));
 	});
 
 	page.main.on("click", ".history-list a", function (event) {
@@ -164,6 +192,14 @@ function renderDashboard(page, active, completed) {
 		const action = $(this).data("action");
 		dispatchDoctorAction(page, encounter, action);
 	});
+}
+
+async function callPatient(page, encounter) {
+	await submitDoctorAction(page, "call_patient", { encounter }, "");
+}
+
+async function releasePatient(page, encounter) {
+	await submitDoctorAction(page, "release_patient", { encounter }, "");
 }
 
 async function dispatchDoctorAction(page, encounter, action) {
@@ -203,6 +239,53 @@ async function getTestOptions() {
 	return testOptions;
 }
 
+// The three notes were the first thing in every dialog, pushing the tests checklist and the
+// medicines table below the fold. They belong under the work, in one collapsed group.
+function historyFields(encounter) {
+	return [
+		{ fieldtype: "Section Break", label: __("History"), collapsible: 1 },
+		{
+			fieldtype: "Small Text",
+			fieldname: "chief_complaint",
+			label: __("Patient Complaints"),
+			default: chiefComplaintOf(encounter),
+		},
+		{
+			fieldtype: "Small Text",
+			fieldname: "past_history",
+			label: __("Past History"),
+			default: pastHistoryOf(encounter),
+		},
+		{
+			fieldtype: "Small Text",
+			fieldname: "allergy_history",
+			label: __("Allergy History"),
+			default: allergyHistoryOf(encounter),
+		},
+	];
+}
+
+// A recorded allergy is the one thing on this page that must not be scrolled past while a drug
+// is being chosen, so it leads the dialog instead of sitting third in a column of grey boxes.
+function allergyWarningFields(encounter) {
+	const allergy = allergyHistoryOf(encounter);
+	if (!allergy) return [];
+
+	return [
+		{
+			fieldtype: "HTML",
+			options:
+				'<div class="bandhu-allergy">' +
+				frappe.utils.icon("triangle-alert", "sm", "", "", "current-color") +
+				"<span><b>" +
+				__("Allergy") +
+				"</b> " +
+				frappe.utils.escape_html(allergy) +
+				"</span></div>",
+		},
+	];
+}
+
 async function openOrderTestDialog(page, encounter) {
 	const options = await getTestOptions();
 	if (!options.length) {
@@ -214,24 +297,6 @@ async function openOrderTestDialog(page, encounter) {
 		title: __("Order Tests"),
 		fields: [
 			{
-				fieldtype: "Small Text",
-				fieldname: "chief_complaint",
-				label: __("Chief Complaint"),
-				default: chiefComplaintOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "past_history",
-				label: __("Past History"),
-				default: pastHistoryOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "allergy_history",
-				label: __("Allergy History"),
-				default: allergyHistoryOf(encounter),
-			},
-			{
 				fieldtype: "MultiCheck",
 				fieldname: "tests",
 				label: __("Tests"),
@@ -242,6 +307,7 @@ async function openOrderTestDialog(page, encounter) {
 				columns: 2,
 			},
 			{ fieldtype: "Small Text", fieldname: "notes", label: __("Instructions for Nurse") },
+			...historyFields(encounter),
 		],
 		primary_action_label: __("Order Tests"),
 		primary_action: async (values) => {
@@ -268,24 +334,7 @@ function openPrescribeDialog(page, encounter) {
 		title: __("Prescribe Medicine"),
 		size: "large",
 		fields: [
-			{
-				fieldtype: "Small Text",
-				fieldname: "chief_complaint",
-				label: __("Chief Complaint"),
-				default: chiefComplaintOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "past_history",
-				label: __("Past History"),
-				default: pastHistoryOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "allergy_history",
-				label: __("Allergy History"),
-				default: allergyHistoryOf(encounter),
-			},
+			...allergyWarningFields(encounter),
 			{
 				fieldtype: "Table",
 				fieldname: "prescriptions",
@@ -323,8 +372,11 @@ function openPrescribeDialog(page, encounter) {
 						label: __("Instructions"),
 					},
 				],
-				data: [],
+				// One row already there: the dialog is named for this table, and an empty grid
+				// made every prescription start with a hunt for Add row.
+				data: [{}],
 			},
+			...historyFields(encounter),
 		],
 		primary_action_label: __("Prescribe"),
 		primary_action: async (values) => {
@@ -350,29 +402,11 @@ function openCompleteDialog(page, encounter) {
 	const dialog = new frappe.ui.Dialog({
 		title: __("Mark Complete"),
 		fields: [
-			{
-				fieldtype: "Small Text",
-				fieldname: "chief_complaint",
-				label: __("Chief Complaint"),
-				default: chiefComplaintOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "past_history",
-				label: __("Past History"),
-				default: pastHistoryOf(encounter),
-			},
-			{
-				fieldtype: "Small Text",
-				fieldname: "allergy_history",
-				label: __("Allergy History"),
-				default: allergyHistoryOf(encounter),
-			},
 			{ fieldtype: "Data", fieldname: "diagnosis", label: __("Diagnosis (optional)") },
 			{
 				fieldtype: "Small Text",
 				fieldname: "clinical_notes",
-				label: __("Clinical Notes (optional)"),
+				label: __("Observations and Notes on Examination"),
 			},
 			{ fieldtype: "Section Break" },
 			{ fieldtype: "Check", fieldname: "refer_patient", label: __("Refer this patient") },
@@ -405,6 +439,7 @@ function openCompleteDialog(page, encounter) {
 				depends_on: "eval:doc.refer_patient",
 				mandatory_depends_on: "eval:doc.refer_patient",
 			},
+			...historyFields(encounter),
 		],
 		primary_action_label: __("Mark Complete"),
 		primary_action: async (values) => {
@@ -432,7 +467,7 @@ function openCompleteDialog(page, encounter) {
 	dialog.show();
 }
 
-async function submitDoctorAction(page, method, args) {
+async function submitDoctorAction(page, method, args, alertMessage = __("Saved")) {
 	frappe.dom.freeze();
 	try {
 		await frappe.call({
@@ -443,66 +478,74 @@ async function submitDoctorAction(page, method, args) {
 		frappe.dom.unfreeze();
 	}
 
-	frappe.show_alert({ message: __("Saved"), indicator: "green" });
+	if (alertMessage) {
+		frappe.show_alert({ message: alertMessage, indicator: "green" });
+	}
 	await bandhu.session_ui.refresh_page(page, loadQueues);
 }
 
-const WAITING_NOTES = {
-	"Awaiting Test": __("Waiting on nurse"),
-	"Awaiting Medicine": __("Waiting on pharmacy"),
-	Completed: __("Seen today"),
-	Cancelled: __("Cancelled"),
+// Where a patient sits when they are not with the doctor. The doctor's own two queues rank
+// first; the nurse's queue is shown so the doctor can see the whole camp, but not acted on.
+const WAITING_ORDER = {
+	"Awaiting Doctor Review": 0,
+	"Waiting for Doctor": 1,
+	"Awaiting Test": 2,
+	"Awaiting Medicine": 2,
 };
 
-// Every card carries this rail, action or not. A band that appeared only on the cards with
-// something to do put a step between neighbouring cards and broke the queue's rhythm.
-function renderActionRail(encounter) {
-	const actions = [];
+const WAITING_NOTES = {
+	"Awaiting Test": __("with nurse"),
+	"Awaiting Medicine": __("at pharmacy"),
+	"Awaiting Doctor Review": __("back from nurse"),
+};
+
+// Nothing here is filled. Calling the next patient is the board's one primary action, and a
+// Mark Complete on every room card would put two or four blue buttons on the same screen.
+function renderRoomActions(encounter) {
+	const buttons = [];
 
 	if (encounter.custom_workflow_state === "Waiting for Doctor") {
-		actions.push(["order_test", __("Order Test"), false]);
-	}
-	if (
-		encounter.custom_workflow_state === "Waiting for Doctor" ||
-		encounter.custom_workflow_state === "Awaiting Doctor Review"
-	) {
-		actions.push(["prescribe", __("Prescribe Medicine"), false]);
-		actions.push(["complete", __("Mark Complete"), true]);
+		buttons.push(
+			bandhu.session_ui.format_action_button(
+				"doctor-action-btn",
+				encounter.name,
+				"order_test",
+				__("Order Test"),
+				false
+			)
+		);
 	}
 
-	const body = actions.length
-		? actions
-				.map(([action, label, is_primary]) =>
-					bandhu.session_ui.format_action_button(
-						"doctor-action-btn",
-						encounter.name,
-						action,
-						label,
-						is_primary
-					)
-				)
-				.join("")
-		: '<span class="rail-note">' +
-		  frappe.utils.escape_html(
-				WAITING_NOTES[encounter.custom_workflow_state] || __("No action yet")
-		  ) +
-		  "</span>";
+	buttons.push(
+		bandhu.session_ui.format_action_button(
+			"doctor-action-btn",
+			encounter.name,
+			"prescribe",
+			__("Prescribe Medicine"),
+			false
+		)
+	);
 
 	return (
-		'<div class="patient-card-actions">' +
-		'<div class="rail-primary">' +
-		body +
-		"</div>" +
-		'<div class="rail-secondary">' +
+		'<div class="room-actions">' +
+		buttons.join("") +
+		'<span class="room-actions-gap"></span>' +
 		bandhu.session_ui.format_action_button(
-			"doctor-action-btn rail-details",
+			"doctor-action-btn room-details",
 			encounter.name,
 			"details",
 			__("Details"),
 			false
 		) +
 		renderOverflowMenu(encounter) +
-		"</div></div>"
+		bandhu.session_ui.format_action_button(
+			"doctor-action-btn room-complete",
+			encounter.name,
+			"complete",
+			__("Mark Complete"),
+			false
+		) +
+		"</div>"
 	);
 }
 
@@ -522,12 +565,20 @@ function renderOverflowMenu(encounter) {
 			  __("Print Referral Letter") +
 			  "</a></li>"
 			: "") +
-		'<li><a class="dropdown-item open-record" data-name="' +
+		'<li><a class="dropdown-item print-card" data-name="' +
 		frappe.utils.escape_html(encounter.name) +
 		'">' +
-		__("Open Record") +
+		__("Print Patient Card") +
 		"</a></li>" +
 		"</ul></div>"
+	);
+}
+
+async function printPatientCard(encounter) {
+	await printThroughEndpoint(
+		"get_patient_card_html",
+		encounter,
+		__("Allow pop-ups for this site to print the patient card.")
 	);
 }
 
@@ -535,32 +586,40 @@ function renderOverflowMenu(encounter) {
 // /printview for the patient card — the letter comes back through this page's own gated
 // endpoint instead.
 async function printReferralLetter(encounter) {
+	await printThroughEndpoint(
+		"get_referral_letter_html",
+		encounter,
+		__("Allow pop-ups for this site to print the referral letter.")
+	);
+}
+
+async function printThroughEndpoint(method, encounter, popup_blocked_message) {
 	if (!encounter) return;
 
 	frappe.dom.freeze();
-	let letter_html;
+	let printable_html;
 	try {
 		const response = await frappe.call({
-			method: "bandhu_app.bandhu_app.page.doctor_form.doctor_form.get_referral_letter_html",
+			method: "bandhu_app.bandhu_app.page.doctor_form.doctor_form." + method,
 			args: { encounter },
 		});
-		letter_html = response.message;
+		printable_html = response.message;
 	} finally {
 		frappe.dom.unfreeze();
 	}
 
-	if (!letter_html) return;
+	if (!printable_html) return;
 
-	const letter_window = window.open("", "_blank");
-	if (!letter_window) {
-		frappe.msgprint(__("Allow pop-ups for this site to print the referral letter."));
+	const print_window = window.open("", "_blank");
+	if (!print_window) {
+		frappe.msgprint(popup_blocked_message);
 		return;
 	}
 
-	letter_window.document.write(letter_html);
-	letter_window.document.close();
-	letter_window.focus();
-	letter_window.print();
+	print_window.document.write(printable_html);
+	print_window.document.close();
+	print_window.focus();
+	print_window.print();
 }
 
 function formatTestLine(tests) {
@@ -622,32 +681,6 @@ function renderClinicalSummary(encounter) {
 	return lines.map(frappe.utils.escape_html).join("<br>");
 }
 
-// What the doctor needs first is whether this patient is theirs to act on right now or is
-// sitting with the nurse -- the visit count they were reading before is background.
-const QUEUE_STATES = {
-	"Waiting for Doctor": { label: __("Ready for doctor"), tone: "ready" },
-	"Awaiting Test": { label: __("With nurse"), tone: "waiting" },
-	"Awaiting Doctor Review": { label: __("Results back"), tone: "review" },
-	"Awaiting Medicine": { label: __("With nurse"), tone: "waiting" },
-	Completed: { label: __("Completed"), tone: "done" },
-};
-
-function renderStatusPill(encounter) {
-	const state = QUEUE_STATES[encounter.custom_workflow_state] || {
-		label: encounter.custom_workflow_state || __("Unknown"),
-		tone: "waiting",
-	};
-	// Which of the two the nurse holds is already in the clinical line below; spelling it out
-	// here as well wrapped the pill onto a second line in a two-up card.
-	return (
-		'<span class="status-pill" data-tone="' +
-		state.tone +
-		'"><span class="status-dot"></span>' +
-		frappe.utils.escape_html(state.label) +
-		"</span>"
-	);
-}
-
 function renderVisitTag(encounter) {
 	const visitCount = encounter.history.length;
 	if (visitCount <= 1) return '<span class="visit-tag">' + __("First visit") + "</span>";
@@ -684,142 +717,293 @@ function renderHistoryList(encounter) {
 	return '<ul class="history-list">' + items + "</ul>";
 }
 
-function renderPatientCard(encounter) {
-	const identity = [encounter.patient_age, encounter.patient_sex]
-		.concat(bandhu.session_ui.group_clinic_id(encounter.clinic_id) || [])
-		.filter(Boolean)
-		.map(frappe.utils.escape_html)
-		.join(" &middot; ");
+// Only shown once a camp is big enough for scrolling to be the problem it solves.
+const FILTER_BAR_MIN_PATIENTS = 8;
 
-	const state = QUEUE_STATES[encounter.custom_workflow_state] || {};
+function renderFilterBar(patientCount) {
+	if (patientCount < FILTER_BAR_MIN_PATIENTS) return "";
 
 	return (
-		'<article class="patient-card" data-tone="' +
-		(state.tone || "waiting") +
-		'" data-name="' +
+		'<div class="queue-filter">' +
+		frappe.utils.icon("search", "sm", "", "", "current-color queue-filter-icon") +
+		'<input type="text" class="form-control queue-filter-input" placeholder="' +
+		frappe.utils.escape_html(__("Find a patient by name or Clinic ID")) +
+		'">' +
+		"</div>"
+	);
+}
+
+function applyQueueFilter(page) {
+	const term = (page.main.find(".queue-filter-input").val() || "").trim().toLowerCase();
+
+	page.main.find(".queue-section").each(function () {
+		const section = $(this);
+		// "With you" holds room cards, not rows. The patient in the room is the one being worked
+		// on, so the filter neither hides them nor rewrites that heading's count.
+		if (!section.find(".queue-row").length) return;
+
+		let shown = 0;
+
+		section.find(".queue-row").each(function () {
+			const matches = !term || ($(this).data("search") || "").indexOf(term) !== -1;
+			$(this).toggle(matches);
+			if (matches) shown += 1;
+		});
+
+		// The heading keeps the section's real total and says how much of it is on screen, so a
+		// filtered board never reads as a shorter queue than it is.
+		const count = section.find(".section-count");
+		const total = count.data("total") ?? count.text();
+		count.data("total", total);
+		count.text(term ? __("{0} of {1}", [shown, total]) : total);
+	});
+}
+
+function renderSectionHead(title, count, trailing) {
+	return (
+		'<h4 class="section-head">' +
+		frappe.utils.escape_html(title) +
+		(count === undefined ? "" : '<span class="section-count">' + count + "</span>") +
+		(trailing || "") +
+		"</h4>"
+	);
+}
+
+function searchKey(encounter) {
+	return [encounter.patient_name, encounter.clinic_id]
+		.filter(Boolean)
+		.join(" ")
+		.toLowerCase();
+}
+
+function renderIdentity(encounter) {
+	return [encounter.patient_age, encounter.patient_sex]
+		.filter(Boolean)
+		.map(frappe.utils.escape_html)
+		.concat(
+			encounter.clinic_id
+				? '<span class="clinic-id">' +
+						frappe.utils.escape_html(bandhu.session_ui.group_clinic_id(encounter.clinic_id)) +
+						"</span>"
+				: []
+		)
+		.join(" &middot; ");
+}
+
+function renderRoomSection(inRoom, waiting) {
+	return (
+		'<div class="queue-section">' +
+		renderSectionHead(__("With you"), inRoom.length || undefined) +
+		(inRoom.length
+			? '<div class="room-cards">' + inRoom.map(renderRoomCard).join("") + "</div>"
+			: "") +
+		renderCallStrip(inRoom, waiting) +
+		"</div>"
+	);
+}
+
+// The way to bring the next person in, whether the room is empty or already holds two.
+function renderCallStrip(inRoom, waiting) {
+	const callable = waiting.filter(isCallable);
+	const full = inRoom.length >= MAX_PATIENTS_WITH_DOCTOR;
+
+	if (!callable.length && inRoom.length) return "";
+
+	const line = !callable.length
+		? __("Nobody is waiting for you.")
+		: full
+		? __("{0} more waiting. Finish one before calling another.", [callable.length])
+		: inRoom.length
+		? __("{0} more waiting.", [callable.length])
+		: __("Nobody is with you. {0} waiting.", [callable.length]);
+
+	return (
+		'<div class="call-strip' + (inRoom.length ? " is-slim" : "") + '">' +
+		'<span class="call-strip-text">' +
+		frappe.utils.escape_html(line) +
+		"</span>" +
+		(callable.length && !full
+			? '<button type="button" class="btn btn-primary call-patient" data-encounter="' +
+			  frappe.utils.escape_html(callable[0].name) +
+			  '">' +
+			  __("Call next patient") +
+			  "</button>"
+			: "") +
+		"</div>"
+	);
+}
+
+function renderRoomCard(encounter) {
+	return (
+		'<article class="room-card" data-name="' +
 		frappe.utils.escape_html(encounter.name) +
 		'">' +
-		'<div class="patient-card-main">' +
-		'<div class="patient-card-status">' +
-		renderStatusPill(encounter) +
-		renderVisitTag(encounter) +
-		"</div>" +
-		'<div class="patient-card-body">' +
-		'<div class="patient-card-head">' +
-		'<span class="patient-name">' +
+		'<div class="room-head">' +
+		'<span class="room-name">' +
 		frappe.utils.escape_html(encounter.patient_name || "") +
 		"</span>" +
-		'<span class="patient-meta">' +
-		identity +
+		'<span class="room-identity">' +
+		renderIdentity(encounter) +
 		"</span>" +
+		renderVisitTag(encounter) +
+		'<button type="button" class="btn btn-sm btn-default release-patient" title="' +
+		frappe.utils.escape_html(__("Back to waiting")) +
+		'" aria-label="' +
+		frappe.utils.escape_html(__("Back to waiting")) +
+		'" data-encounter="' +
+		frappe.utils.escape_html(encounter.name) +
+		'">' +
+		frappe.utils.icon("undo-2", "sm", "", "", "current-color") +
+		"</button>" +
 		"</div>" +
-		'<div class="patient-clinical">' +
+		'<div class="room-body">' +
+		'<div class="room-clinical">' +
 		renderClinicalSummary(encounter) +
 		"</div>" +
+		renderAllergy(encounter) +
+		renderComplaint(encounter) +
 		renderHistoryList(encounter) +
-		"</div></div>" +
-		renderActionRail(encounter) +
+		"</div>" +
+		renderRoomActions(encounter) +
 		"</article>"
 	);
 }
 
-// Nothing on a completed patient is actionable, so a card each is a card's worth of space for
-// a line of reference. The table keeps a 40-patient camp on one screen.
-function renderCompletedQueue(title, encounters) {
-	const count = '<span class="queue-meta"> (' + encounters.length + ")</span>";
-	const head = '<h4 class="queue-head">' + frappe.utils.escape_html(title) + count + "</h4>";
-
-	if (!encounters.length) {
-		return (
-			'<div class="queue-section">' +
-			head +
-			'<div class="empty-state">' +
-			frappe.utils.icon("inbox", "xl", "", "", "current-color empty-state-icon small") +
-			'<span class="empty-state-text">' +
-			__("No patients.") +
-			"</span>" +
-			"</div></div>"
-		);
-	}
-
-	const rows = encounters
-		.map(
-			(encounter) =>
-				'<tr class="completed-row" data-name="' +
-				frappe.utils.escape_html(encounter.name) +
-				'">' +
-				"<td>" +
-				frappe.utils.escape_html(encounter.patient_name || "") +
-				"</td>" +
-				"<td>" +
-				frappe.utils.escape_html(
-					[encounter.patient_age, encounter.patient_sex].filter(Boolean).join(" \u00b7 ")
-				) +
-				"</td>" +
-				'<td class="completed-clinic-id">' +
-				frappe.utils.escape_html(
-					bandhu.session_ui.group_clinic_id(encounter.clinic_id) || ""
-				) +
-				"</td>" +
-				'<td class="completed-summary">' +
-				renderClinicalSummary(encounter) +
-				"</td>" +
-				'<td class="completed-actions">' +
-				bandhu.session_ui.format_action_button(
-					"doctor-action-btn rail-details",
-					encounter.name,
-					"details",
-					__("Details"),
-					false
-				) +
-				renderOverflowMenu(encounter) +
-				"</td></tr>"
-		)
-		.join("");
+// On the card as well as in the dialogs: by the time the prescribe dialog is open the doctor
+// has already decided what to give.
+function renderAllergy(encounter) {
+	if (!encounter.custom_allergy_history) return "";
 
 	return (
-		'<div class="queue-section">' +
-		head +
-		'<div class="table-wrap"><table class="table"><thead><tr>' +
-		"<th>" +
-		__("Patient") +
-		"</th><th>" +
-		__("Age / Sex") +
-		"</th><th>" +
-		__("Clinic ID") +
-		"</th><th>" +
-		__("Seen for") +
-		"</th><th></th>" +
-		"</tr></thead><tbody>" +
-		rows +
-		"</tbody></table></div></div>"
+		'<div class="bandhu-allergy">' +
+		frappe.utils.icon("triangle-alert", "sm", "", "", "current-color") +
+		"<span><b>" +
+		__("Allergy") +
+		"</b> " +
+		frappe.utils.escape_html(encounter.custom_allergy_history) +
+		"</span></div>"
 	);
 }
 
-function renderQueue(title, encounters) {
-	const count = '<span class="queue-meta"> (' + encounters.length + ")</span>";
-	const head = '<h4 class="queue-head">' + frappe.utils.escape_html(title) + count + "</h4>";
-
-	if (!encounters.length) {
-		return (
-			'<div class="queue-section">' +
-			head +
-			'<div class="empty-state">' +
-			frappe.utils.icon("inbox", "xl", "", "", "current-color empty-state-icon small") +
-			'<span class="empty-state-text">' +
-			__("No patients.") +
-			"</span>" +
-			"</div></div>"
-		);
-	}
+function renderComplaint(encounter) {
+	if (!encounter.custom_chief_complaints) return "";
 
 	return (
-		'<div class="queue-section">' +
-		head +
-		'<div class="patient-cards">' +
-		encounters.map(renderPatientCard).join("") +
-		"</div></div>"
+		'<div class="room-complaint">' +
+		'<span class="room-complaint-label">' +
+		__("Complaint") +
+		"</span>" +
+		frappe.utils.escape_html(encounter.custom_chief_complaints) +
+		"</div>"
 	);
+}
+
+function isCallable(encounter) {
+	return (
+		encounter.custom_workflow_state === "Waiting for Doctor" ||
+		encounter.custom_workflow_state === "Awaiting Doctor Review"
+	);
+}
+
+function renderWaitingSection(encounters) {
+	return (
+		'<div class="queue-section">' +
+		renderSectionHead(__("Waiting"), encounters.length) +
+		(encounters.length
+			? '<div class="queue-rows">' + encounters.map(renderWaitingRow).join("") + "</div>"
+			: renderEmptyList(__("Nobody is waiting.")))
+		+ "</div>"
+	);
+}
+
+function renderWaitingRow(encounter) {
+	const note =
+		WAITING_NOTES[encounter.custom_workflow_state] ||
+		(isCallable(encounter) ? "" : encounter.custom_workflow_state || __("no state"));
+	const back = encounter.custom_workflow_state === "Awaiting Doctor Review";
+
+	return (
+		'<div class="queue-row' +
+		(back ? " is-back" : "") +
+		'" data-name="' +
+		frappe.utils.escape_html(encounter.name) +
+		'" data-search="' +
+		frappe.utils.escape_html(searchKey(encounter)) +
+		'">' +
+		'<span class="row-name">' +
+		'<span class="row-head">' +
+		'<span class="row-patient">' +
+		frappe.utils.escape_html(encounter.patient_name || "") +
+		"</span>" +
+		'<span class="row-identity">' +
+		renderIdentity(encounter) +
+		"</span></span>" +
+		'<span class="row-clinical">' +
+		renderClinicalSummary(encounter) +
+		"</span>" +
+		"</span>" +
+		'<span class="row-right">' +
+		(note
+			? '<span class="row-note' +
+			  (back ? " is-back" : "") +
+			  '">' +
+			  frappe.utils.escape_html(note) +
+			  "</span>"
+			: "") +
+		'<span class="row-waited">' +
+		__("waiting {0}", [frappe.datetime.comment_when(encounter.creation, true)]) +
+		"</span>" +
+		(isCallable(encounter)
+			? '<button type="button" class="btn btn-sm btn-default call-patient" data-encounter="' +
+			  frappe.utils.escape_html(encounter.name) +
+			  '">' +
+			  __("Call") +
+			  "</button>"
+			: "") +
+		"</span></div>"
+	);
+}
+
+function renderDoneSection(encounters) {
+	return (
+		'<div class="queue-section is-done">' +
+		renderSectionHead(__("Done today"), encounters.length) +
+		(encounters.length
+			? '<div class="queue-rows">' + encounters.map(renderDoneRow).join("") + "</div>"
+			: renderEmptyList(__("Nobody finished yet."))) +
+		"</div>"
+	);
+}
+
+function renderDoneRow(encounter) {
+	return (
+		'<div class="queue-row" data-name="' +
+		frappe.utils.escape_html(encounter.name) +
+		'" data-search="' +
+		frappe.utils.escape_html(searchKey(encounter)) +
+		'">' +
+		'<span class="row-name">' +
+		'<span class="row-head">' +
+		'<span class="row-patient">' +
+		frappe.utils.escape_html(encounter.patient_name || "") +
+		"</span>" +
+		'<span class="row-identity">' +
+		renderIdentity(encounter) +
+		"</span></span>" +
+		'<span class="row-clinical">' +
+		renderClinicalSummary(encounter) +
+		"</span>" +
+		"</span>" +
+		'<span class="row-right">' +
+		renderOverflowMenu(encounter) +
+		"</span></div>"
+	);
+}
+
+// An empty list is a fact in passing, not a panel: the boxed empty state took as much of the
+// screen as a queue of four and pushed the real work off the top.
+function renderEmptyList(message) {
+	return '<div class="queue-empty">' + frappe.utils.escape_html(message) + "</div>";
 }
 
 frappe.pages["doctor-form"].on_page_load = function (wrapper) {
@@ -829,14 +1013,21 @@ frappe.pages["doctor-form"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	page.set_secondary_action(__("Refresh"), refreshDashboard);
-	page.set_primary_action(__("My Schedule"), () => frappe.set_route("my-schedule"), "calendar");
+	// The one filled button on this page brings in the next patient, so leaving the page is a
+	// secondary action -- the same header the CAD and Nurse boards carry.
+	page.set_secondary_action(__("My Schedule"), () => frappe.set_route("my-schedule"), "calendar");
 
 	doctorPage = page;
 };
 
 async function refreshDashboard() {
 	await frappe.require(SESSION_UI_ASSET);
+	bandhu.session_ui.add_refresh_icon(doctorPage, refreshDashboard);
+	bandhu.session_ui.subscribe_to_board_updates(
+		"doctor-form",
+		() => (doctorSession ? doctorSession.session_name : null),
+		refreshDashboard
+	);
 	await bandhu.session_ui.refresh_page(doctorPage, loadDashboard);
 }
 
