@@ -282,6 +282,31 @@ def generate_scheduled_sessions():
 			frappe.db.rollback(save_point=savepoint)
 			frappe.log_error(title=f"Session generation failed for {name}")
 
+	report_stale_schedules(schedules)
+
+
+def report_stale_schedules(schedules: list) -> None:
+	"""A schedule whose watermark is still behind today after a run has generated nothing, and
+	the first sign of that is otherwise a team arriving at a camp that was never created."""
+	stale = (
+		[
+			row.name
+			for row in frappe.get_all(
+				"Bandhu Session Schedule",
+				filters={"name": ["in", schedules], "last_generated_upto": ["<", today()]},
+				fields=["name", "last_generated_upto"],
+			)
+		]
+		if schedules
+		else []
+	)
+
+	if stale:
+		frappe.log_error(
+			message="\n".join(stale),
+			title="Session schedules behind the horizon",
+		)
+
 
 ASSIGNMENT_LABELS = {
 	"assigned_doctor": "Doctor",
