@@ -417,6 +417,12 @@
 	margin-top: var(--margin-lg);
 }
 
+/* Step one has no Back button, so the forward action anchors itself rather than sliding left. */
+.sched-wizard .actions .wizard-next,
+.sched-wizard .actions .wizard-create {
+	margin-left: auto;
+}
+
 @media (max-width: 768px) {
 	.sched-wizard {
 		padding: var(--padding-md) var(--padding-sm) var(--padding-xl);
