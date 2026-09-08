@@ -4,10 +4,16 @@ const SESSION_UI_ASSET = "/assets/bandhu_app/js/session_ui.js";
 
 let cadSession = null;
 let cadPage = null;
-let formOptions = { major_states: [], other_states: [], major_sectors: [], other_countries: [] };
+let formOptions = { major_states: [], other_states: [], major_sectors: [] };
 
-// India and Nepal are always offered as quick taps; a full Country master backs "Other".
+// India and Nepal are the quick taps; anything else is typed into the "specify" box.
 const QUICK_COUNTRIES = ["India", "Nepal"];
+
+// Keep in step with MAX_PLAUSIBLE_AGE in cad_form.py, which rejects anything above it.
+const MAX_PLAUSIBLE_AGE = 120;
+
+// Keep in step with MIN_SEARCH_LENGTH in cad_form.py, which throws below it.
+const MIN_SEARCH_LENGTH = 2;
 
 const NAME_FIELD = {
 	name: "full_name",
@@ -24,7 +30,7 @@ const AGE_AND_DOB_FIELDS = [
 		name: "age",
 		label: __("Age (Years)"),
 		type: "number",
-		attrs: 'min="0" max="120" step="1" inputmode="numeric"',
+		attrs: 'min="0" max="' + MAX_PLAUSIBLE_AGE + '" step="1" inputmode="numeric"',
 	},
 	{ name: "dob", label: __("Date of Birth"), type: "date" },
 ];
@@ -45,10 +51,10 @@ const MEASUREMENT_FIELDS = [
 ];
 
 const CONTACT_FIELDS = [
-	{ name: "company_name", label: __("Company Name"), type: "text" },
+	{ name: "company_name", label: __("Name of Company"), type: "text" },
 	{
 		name: "mobile",
-		label: __("Mobile"),
+		label: __("Mobile Number"),
 		type: "tel",
 		attrs: 'inputmode="numeric" maxlength="10"',
 	},
@@ -56,14 +62,14 @@ const CONTACT_FIELDS = [
 ];
 
 async function loadDashboard(page) {
-	frappe.dom.freeze();
+	bandhu.session_ui.freeze();
 	let statusResult;
 	try {
 		statusResult = await frappe.call({
 			method: "bandhu_app.bandhu_app.page.cad_form.cad_form.get_session_status",
 		});
 	} finally {
-		frappe.dom.unfreeze();
+		bandhu.session_ui.unfreeze();
 	}
 
 	const data = statusResult.message || {};
@@ -92,7 +98,6 @@ async function loadDashboard(page) {
 		major_states: [],
 		other_states: [],
 		major_sectors: [],
-		other_countries: [],
 	};
 
 	await renderFrontDesk(page, data);
@@ -168,6 +173,9 @@ async function renderFrontDesk(page, data) {
 		"<th>" +
 		__("Stage") +
 		"</th>" +
+		"<th>" +
+		__("In camp") +
+		"</th>" +
 		"<th></th>" +
 		"</tr></thead>" +
 		'<tbody class="cad-queue-body"></tbody>' +
@@ -232,13 +240,13 @@ function renderSearchSection() {
 			__("Scan the patient's card, or search by Clinic ID, ABHA ID, Mobile, Name or DOB")
 		) +
 		'"></div>' +
-		'<button class="btn btn-primary cad-search-btn">' +
+		'<button class="btn btn-default cad-search-btn">' +
 		__("Search") +
 		"</button>" +
 		'<button class="btn btn-default cad-scan-btn" title="' +
 		frappe.utils.escape_html(__("Scan the patient's card with the camera")) +
 		'">' +
-		frappe.utils.icon("camera", "sm", "", "", "current-color") +
+		frappe.utils.icon("camera", "xs", "", "", "current-color") +
 		__("Scan") +
 		"</button>" +
 		"</div>" +
@@ -250,8 +258,8 @@ function renderSearchSection() {
 function renderRegisterSection() {
 	return (
 		'<div class="cad-register-section">' +
-		'<button class="btn btn-default cad-register-toggle-btn">' +
-		frappe.utils.icon("user-plus", "sm", "", "", "current-color") +
+		'<button class="btn btn-primary cad-register-toggle-btn">' +
+		frappe.utils.icon("user-plus", "xs", "", "", "current-color") +
 		__("Register New Patient") +
 		"</button>" +
 		'<div class="cad-register-form">' +
@@ -361,9 +369,9 @@ function renderTabGroup(config) {
 		.map((option) => {
 			const isDefault = option === config.defaultValue;
 			return (
-				'<button type="button" class="btn ' +
-				(isDefault ? "btn-primary active" : "btn-default") +
-				' tab-btn" data-value="' +
+				'<button type="button" class="btn btn-default tab-btn' +
+				(isDefault ? " is-selected" : "") +
+				'" data-value="' +
 				frappe.utils.escape_html(option) +
 				'">' +
 				frappe.utils.escape_html(__(option)) +
@@ -403,6 +411,8 @@ function renderSexGroup() {
 	});
 }
 
+// "picker" mode with no picker: tapping Other clears the Link field and reveals the text box,
+// so a country outside the two quick taps is recorded without a typo ever reaching the Link.
 function renderCountryGroup() {
 	return renderTabGroup({
 		field: "native_country",
@@ -410,10 +420,10 @@ function renderCountryGroup() {
 		options: QUICK_COUNTRIES.concat(["Other"]),
 		mode: "picker",
 		defaultValue: "India",
-		otherPickerHtml: renderOtherPicker(
-			formOptions.other_countries || [],
-			__("-- Select Country --")
-		),
+		detailFieldHtml:
+			'<input type="text" class="form-control cad-field detail-field" data-field="specify_native_country" placeholder="' +
+			frappe.utils.escape_html(__("Specify country")) +
+			'" hidden>',
 	});
 }
 
@@ -433,7 +443,7 @@ function renderStateGroup() {
 function renderSectorGroup() {
 	return renderTabGroup({
 		field: "occupation",
-		label: __("Occupation / Sector"),
+		label: __("Sector of Employment"),
 		options: (formOptions.major_sectors || []).concat(["Other"]),
 		mode: "direct",
 		detailFieldHtml:
@@ -494,6 +504,10 @@ function bindSearchEvents(page) {
 		confirm_add_to_queue(page, $(this).data("patient"));
 	});
 
+	page.main.off("click", ".cad-search-clear").on("click", ".cad-search-clear", function () {
+		clearSearchResults(page);
+	});
+
 	page.main.off("click", ".queue-print-card").on("click", ".queue-print-card", function (event) {
 		event.preventDefault();
 		print_patient_card($(this).data("patient"));
@@ -510,9 +524,7 @@ function bindSearchEvents(page) {
 function confirm_add_to_queue(page, patient) {
 	frappe.confirm(__("Add this patient to today's queue?"), async () => {
 		await addPatientToQueue(page, patient, () => {
-			page.main.find(".cad-search-results").empty();
-			page.main.find(".cad-search-input").val("");
-			focus_scan_input(page);
+			clearSearchResults(page);
 		});
 	});
 }
@@ -569,25 +581,37 @@ async function searchPatients(page) {
 	const query = (page.main.find(".cad-search-input").val() || "").trim();
 	if (!query) return;
 
-	let results;
+	if (query.length < MIN_SEARCH_LENGTH) {
+		frappe.msgprint(__("Type at least {0} characters to search.", [MIN_SEARCH_LENGTH]));
+		return;
+	}
+
+	let found;
 	frappe.dom.freeze();
 	try {
 		const response = await frappe.call({
 			method: "bandhu_app.bandhu_app.page.cad_form.cad_form.search_patient",
 			args: { query },
 		});
-		results = response.message || [];
+		found = response.message || {};
 	} finally {
 		frappe.dom.unfreeze();
 	}
 
+	const results = found.results || [];
 	const scanned = match_scanned_card(query, results);
 	if (scanned) {
 		queue_scanned_patient(page, scanned);
 		return;
 	}
 
-	renderSearchResults(page, results);
+	renderSearchResults(page, results, found.capped);
+}
+
+function clearSearchResults(page) {
+	page.main.find(".cad-search-results").empty();
+	page.main.find(".cad-search-input").val("");
+	focus_scan_input(page);
 }
 
 // Ten digits is the current Clinic ID; BMC-##### is the format issued before this one and
@@ -616,9 +640,7 @@ function queue_scanned_patient(page, patient) {
 		]),
 		async () => {
 			await addPatientToQueue(page, patient.name, () => {
-				page.main.find(".cad-search-results").empty();
-				page.main.find(".cad-search-input").val("");
-				focus_scan_input(page);
+				clearSearchResults(page);
 			});
 		},
 		() => {
@@ -627,7 +649,7 @@ function queue_scanned_patient(page, patient) {
 	);
 }
 
-function renderSearchResults(page, results) {
+function renderSearchResults(page, results, capped) {
 	const container = page.main.find(".cad-search-results");
 	if (!results.length) {
 		container.html(
@@ -640,7 +662,14 @@ function renderSearchResults(page, results) {
 
 	const rows = results
 		.map((patient) => {
-			const meta = [patient.custom_bandhu_id, patient.sex, patient.dob]
+			// The Clinic ID is grouped the same way the queue below prints it, and the age is
+			// what a front desk can actually confirm with the patient -- a birth date on an
+			// estimated record is Jan 1 and confirms nothing.
+			const meta = [
+				bandhu.session_ui.group_clinic_id(patient.custom_bandhu_id),
+				patient.sex,
+				patient.age,
+			]
 				.filter(Boolean)
 				.map(frappe.utils.escape_html)
 				.join(" &bull; ");
@@ -662,7 +691,7 @@ function renderSearchResults(page, results) {
 				'">' +
 				__("Print Card") +
 				"</button>" +
-				'<button class="btn btn-xs btn-primary pr-queue-btn" data-patient="' +
+				'<button class="btn btn-xs btn-default pr-queue-btn" data-patient="' +
 				frappe.utils.escape_html(patient.name) +
 				'">' +
 				__("Add to Queue") +
@@ -673,22 +702,79 @@ function renderSearchResults(page, results) {
 		})
 		.join("");
 
-	container.html(rows);
+	const heading = capped
+		? __("First {0} matches. Narrow the search if the patient is not here.", [results.length])
+		: __("{0} matching patients", [results.length]);
+
+	container.html(
+		'<div class="pr-summary">' +
+			'<span class="pr-summary-text">' +
+			frappe.utils.escape_html(heading) +
+			"</span>" +
+			'<button type="button" class="btn btn-xs btn-default cad-search-clear">' +
+			__("Clear") +
+			"</button></div>" +
+			rows
+	);
 }
 
 function bindRegisterEvents(page) {
 	page.main
 		.off("click", ".cad-register-toggle-btn")
-		.on("click", ".cad-register-toggle-btn", () => {
-			page.main.find(".cad-register-form").toggle();
+		.on("click", ".cad-register-toggle-btn", function () {
+			const form = page.main.find(".cad-register-form").toggle();
+			// Once the form is open its own Register button is the page's filled action, so the
+			// control that opened it drops back to being a plain collapse toggle.
+			$(this)
+				.toggleClass("btn-primary", !form.is(":visible"))
+				.toggleClass("btn-default", form.is(":visible"));
+		});
+
+	// Age fills the date of birth in on screen, using the same Jan 1 of the birth year that
+	// register_patient would have derived server-side, so CAD sees the date that gets stored
+	// instead of it appearing only after the patient is saved. A date CAD typed themselves is
+	// left alone: only a value this handler put there is overwritten or cleared.
+	page.main
+		.off("input", '.cad-field[data-field="age"]')
+		.on("input", '.cad-field[data-field="age"]', function () {
+			const dobField = page.main.find('.cad-field[data-field="dob"]');
+			const age = parseInt($(this).val(), 10);
+
+			if (!Number.isInteger(age) || age < 0 || age > MAX_PLAUSIBLE_AGE) {
+				if (dobField.val() && dobField.val() === dobField.data("derived")) {
+					dobField.val("").removeData("derived");
+				}
+				return;
+			}
+
+			const derived = new Date().getFullYear() - age + "-01-01";
+			dobField.val(derived).data("derived", derived);
+		});
+
+	// The other direction: a real birth date gives a real age, so CAD can read back what they
+	// entered without doing the arithmetic. Only an age this handler filled in is overwritten.
+	page.main
+		.off("input", '.cad-field[data-field="dob"]')
+		.on("input", '.cad-field[data-field="dob"]', function () {
+			const ageField = page.main.find('.cad-field[data-field="age"]');
+			const age = years_since($(this).val());
+
+			if (age === null || age > MAX_PLAUSIBLE_AGE) {
+				if (ageField.val() && ageField.val() === ageField.data("derived")) {
+					ageField.val("").removeData("derived");
+				}
+				return;
+			}
+
+			ageField.val(age).data("derived", String(age));
 		});
 
 	// One handler for all four tab groups (Sex, Country, Native State, Occupation/Sector):
 	// see renderTabGroup's comment for what "direct" vs "picker" mode means.
 	page.main.off("click", ".tab-btn").on("click", ".tab-btn", function () {
 		const wrap = $(this).closest(".tab-group-wrap");
-		wrap.find(".tab-btn").removeClass("btn-primary active").addClass("btn-default");
-		$(this).addClass("btn-primary active").removeClass("btn-default");
+		wrap.find(".tab-btn").removeClass("is-selected");
+		$(this).addClass("is-selected");
 
 		const value = $(this).data("value");
 		const isOther = value === "Other";
@@ -757,6 +843,25 @@ async function loadDistrictSuggestions(page, state) {
 	select.prop("disabled", false);
 }
 
+// Completed years between a yyyy-mm-dd birth date and today, or null if the date is unusable
+// (half-typed while the CAD is still on the year, or in the future).
+function years_since(date_string) {
+	// A date input always hands back yyyy-mm-dd, so this parses the parts rather than going
+	// through Date(), which would read the string as UTC and shift the day in IST.
+	const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date_string || "");
+	if (!parts) return null;
+
+	const [birth_year, birth_month, birth_day] = parts.slice(1).map(Number);
+	const today = new Date();
+	let age = today.getFullYear() - birth_year;
+	const before_birthday =
+		today.getMonth() + 1 < birth_month ||
+		(today.getMonth() + 1 === birth_month && today.getDate() < birth_day);
+	if (before_birthday) age -= 1;
+
+	return age < 0 ? null : age;
+}
+
 async function submitRegistration(page) {
 	const values = {};
 	page.main.find(".cad-field").each(function () {
@@ -802,12 +907,16 @@ async function submitRegistration(page) {
 	if (values.height_cm) args.height_cm = values.height_cm;
 	if (values.weight_kg) args.weight_kg = values.weight_kg;
 	if (values.native_country) args.native_country = values.native_country;
+	if (values.specify_native_country) args.specify_native_country = values.specify_native_country;
 	if (values.native_state) args.native_state = values.native_state;
 	if (values.native_district) args.native_district = values.native_district;
 	if (values.occupation) args.occupation = values.occupation;
 	if (values.specify_sector) args.specify_sector = values.specify_sector;
 	if (values.company_name) args.company_name = values.company_name;
 	if (values.abha_id) args.abha_id = values.abha_id;
+
+	const existing = await findPossibleDuplicate(args);
+	if (existing && !(await confirmRegisterAnyway(page, existing))) return;
 
 	frappe.dom.freeze();
 	let patient;
@@ -835,6 +944,74 @@ async function submitRegistration(page) {
 	// button, so the card can be printed now or at any point during the visit without a
 	// dialog interrupting the next registration.
 	frappe.show_alert({ message: __("Patient registered."), indicator: "green" });
+}
+
+// A second registration for someone already on the master burns a permanent Clinic ID, prints
+// a second card, and splits that patient's history in two -- none of which can be undone once
+// the card is in the patient's hand.
+async function findPossibleDuplicate(args) {
+	const response = await frappe.call({
+		method: "bandhu_app.bandhu_app.page.cad_form.cad_form.find_possible_duplicate",
+		args: {
+			full_name: args.full_name,
+			dob: args.dob,
+			age: args.age,
+			mobile: args.mobile,
+			abha_id: args.abha_id,
+		},
+	});
+	return response.message;
+}
+
+// Resolves true to carry on and register a new patient, false to stop. Queueing the existing
+// patient stops the registration too, having already done the thing the CAD actually wanted.
+function confirmRegisterAnyway(page, existing) {
+	return new Promise((resolve) => {
+		const label = [
+			existing.patient_name,
+			bandhu.session_ui.group_clinic_id(existing.clinic_id),
+			existing.age,
+		]
+			.filter(Boolean)
+			.join(" · ");
+
+		const dialog = new frappe.ui.Dialog({
+			title: __("Already registered?"),
+			fields: [
+				{
+					fieldtype: "HTML",
+					options:
+						"<p>" +
+						__("{0} is already on the patient list, with {1}.", [
+							"<b>" + frappe.utils.escape_html(label) + "</b>",
+							frappe.utils.escape_html(existing.matched_on),
+						]) +
+						"</p><p>" +
+						__(
+							"Registering again gives this person a second Clinic ID and a second card."
+						) +
+						"</p>",
+				},
+			],
+			primary_action_label: __("Add to queue"),
+			primary_action: async () => {
+				dialog.hide();
+				resolve(false);
+				await addPatientToQueue(page, existing.name, () => {
+					page.main.find(".cad-register-form").hide().html(renderRegisterForm());
+					focus_scan_input(page);
+				});
+			},
+			secondary_action_label: __("Register as new"),
+			secondary_action: () => {
+				dialog.hide();
+				resolve(true);
+			},
+		});
+
+		dialog.$wrapper.on("hidden.bs.modal", () => resolve(false));
+		dialog.show();
+	});
 }
 
 async function addPatientToQueue(page, patient, onQueued) {
@@ -866,7 +1043,7 @@ function renderQueueTable(page, rows) {
 
 	if (!rows.length) {
 		body.html(
-			'<tr><td colspan="4" class="queue-empty">' +
+			'<tr><td colspan="5" class="queue-empty">' +
 				__("No patients in queue yet.") +
 				"</td></tr>"
 		);
@@ -885,6 +1062,9 @@ function renderQueueTable(page, rows) {
 				"</td>" +
 				"<td>" +
 				format_stage_badge(row.current_stage) +
+				"</td>" +
+				'<td class="queue-in-camp">' +
+				format_time_in_camp(row) +
 				"</td>" +
 				'<td class="queue-row-actions">' +
 				renderRowMenu(row) +
@@ -927,6 +1107,18 @@ function renderRowMenu(row) {
 	);
 }
 
+// Time since the patient registered, not time spent waiting: no state change is timestamped, and
+// a patient who is with the nurse is not waiting for anything. How long someone has been in the
+// camp is what the front desk is asked for anyway. Finished visits drop it.
+function format_time_in_camp(row) {
+	if (!row.queued_at || QUEUE_TERMINAL_STAGES.has(row.current_stage)) return "";
+
+	// comment_when returns the framework's own <span class="frappe-timestamp">, so this string
+	// is markup on purpose -- escaping it prints the tag.
+	// The column heading already says what this is, so the cell is just the duration.
+	return frappe.datetime.comment_when(row.queued_at, true);
+}
+
 // Status was a second column that only ever restated the stage (Completed reads Done, every
 // other stage reads Active), so the badge carries both: colour for how the visit ended,
 // wording for where the patient is.
@@ -954,22 +1146,30 @@ frappe.pages["cad-form"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 
-	page.set_secondary_action(__("Refresh"), refreshDashboard);
-	page.set_primary_action(__("My Schedule"), () => frappe.set_route("my-schedule"), "calendar");
+	page.set_secondary_action(
+		__("My Schedule"),
+		() => frappe.set_route("my-schedule"),
+		"calendar"
+	);
 
 	cadPage = page;
 };
 
-async function refreshDashboard() {
-	await frappe.require(SESSION_UI_ASSET);
-	await bandhu.session_ui.refresh_page(cadPage, loadDashboard);
-}
-
 // Desk keeps this page's DOM and module state alive across route changes, so the queue would
 // otherwise still show the state it had when the CAD left the page. Only the queue is reloaded
 // when the front desk is already up -- a full re-render would wipe a half-typed registration.
-frappe.pages["cad-form"].on_page_show = async function () {
+async function refreshBoard() {
 	await frappe.require(SESSION_UI_ASSET);
+	bandhu.session_ui.add_refresh_icon(cadPage, refreshBoard);
 	const load = cadPage.main.find(".cad-queue-body").length ? loadQueue : loadDashboard;
 	await bandhu.session_ui.refresh_page(cadPage, load);
-};
+	// After the load, not before: the camp's room can only be joined once the page knows which
+	// camp it is showing.
+	bandhu.session_ui.subscribe_to_board_updates(
+		"cad-form",
+		() => (cadSession ? cadSession.session_name : null),
+		refreshBoard
+	);
+}
+
+frappe.pages["cad-form"].on_page_show = refreshBoard;
