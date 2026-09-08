@@ -62,7 +62,7 @@ function renderForm(page) {
 		renderTextField("email", __("Email"), "email", true) +
 		renderTextField(
 			"mobile_phone",
-			__("Mobile"),
+			__("Mobile Number"),
 			"tel",
 			false,
 			'inputmode="numeric" maxlength="10"'
