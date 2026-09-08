@@ -1,10 +1,12 @@
 import frappe
 from frappe import _
 from frappe.core.doctype.access_log.access_log import make_access_log
+from frappe.utils import flt
 
 from bandhu_app.bandhu_app.utils.clinic_test import get_enabled_tests
-from bandhu_app.bandhu_app.utils.patient import compact_age
+from bandhu_app.bandhu_app.utils.patient import compact_age, render_patient_card
 from bandhu_app.bandhu_app.utils.patient_details import get_patient_details, get_session_encounters
+from bandhu_app.bandhu_app.utils.realtime import publish_board_update
 from bandhu_app.bandhu_app.utils.session import find_active_session, find_upcoming_sessions
 
 REFERRAL_PRIORITIES = {"Low", "Medium", "High"}
@@ -104,7 +106,53 @@ def get_registered_patients():
 	session = get_doctor_session()
 	if not session:
 		return []
-	return get_session_encounters(session, ["!=", "Completed"])
+	return get_session_encounters(session, ["not in", ["Completed", "Cancelled"]])
+
+
+CALLABLE_WORKFLOW_STATES = ("Waiting for Doctor", "Awaiting Doctor Review")
+
+# A doctor works on a few patients at once -- one dressing, one waiting on a reading, one being
+# examined -- but a room that holds everybody is the old board again under a new heading.
+MAX_PATIENTS_WITH_DOCTOR = 3
+
+
+def count_patients_with_doctor(clinic_session: str) -> int:
+	return frappe.db.count(
+		"Patient Encounter",
+		{"custom_clinic_session": clinic_session, "custom_called_at": ["is", "set"]},
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def call_patient(encounter: str) -> None:
+	require_doctor_access()
+
+	doc = load_owned_encounter(encounter)
+	if doc.custom_workflow_state not in CALLABLE_WORKFLOW_STATES:
+		frappe.throw(_("This patient is not waiting for you."))
+
+	if doc.custom_called_at:
+		return
+
+	if count_patients_with_doctor(doc.custom_clinic_session) >= MAX_PATIENTS_WITH_DOCTOR:
+		frappe.throw(
+			_("You already have {0} patients with you. Finish one, or send one back, first.").format(
+				MAX_PATIENTS_WITH_DOCTOR
+			)
+		)
+
+	frappe.db.set_value("Patient Encounter", doc.name, "custom_called_at", frappe.utils.now_datetime())
+	publish_board_update(doc.custom_clinic_session)
+
+
+@frappe.whitelist(methods=["POST"])
+def release_patient(encounter: str) -> None:
+	"""The patient did not come in. They keep their place in the queue, they just leave the room."""
+	require_doctor_access()
+
+	doc = load_owned_encounter(encounter)
+	frappe.db.set_value("Patient Encounter", doc.name, "custom_called_at", None)
+	publish_board_update(doc.custom_clinic_session)
 
 
 @frappe.whitelist()
@@ -204,6 +252,17 @@ def get_test_options() -> list[dict]:
 	]
 
 
+def apply_clinical_notes(doc, chief_complaint, past_history, allergy_history) -> None:
+	"""`is not None`, not truthiness. A doctor deleting a wrongly recorded allergy sends an empty
+	string, and a falsy check drops exactly that edit -- the one on this page that matters most."""
+	if chief_complaint is not None:
+		doc.custom_chief_complaints = chief_complaint
+	if past_history is not None:
+		doc.custom_past_history = past_history
+	if allergy_history is not None:
+		doc.custom_allergy_history = allergy_history
+
+
 @frappe.whitelist(methods=["POST"])
 def order_test(
 	encounter: str,
@@ -229,14 +288,10 @@ def order_test(
 	for test_name in tests:
 		doc.append("custom_test_instructions", {"test_name": test_name, "notes": notes})
 
-	if chief_complaint:
-		doc.custom_chief_complaints = chief_complaint
-	if past_history:
-		doc.custom_past_history = past_history
-	if allergy_history:
-		doc.custom_allergy_history = allergy_history
+	apply_clinical_notes(doc, chief_complaint, past_history, allergy_history)
 
 	doc.custom_workflow_state = "Awaiting Test"
+	doc.custom_called_at = None
 	doc.save(ignore_permissions=True)
 
 
@@ -260,10 +315,27 @@ def prescribe_medicine(
 			_("Medicine can only be prescribed for a patient waiting for or under doctor review."),
 		)
 
+	already_prescribed = {row.medicines for row in doc.custom_bandhu_prescription}
+	submitted = set()
+
 	for row in prescriptions:
 		medicine = (row.get("medicines") or "").strip()
 		if not medicine:
 			frappe.throw(_("Every prescription row needs a medicine."))
+		# There is no way to say "twice the dose" by listing a drug twice, so a repeat is a
+		# mistake -- and the person dispensing reads the list, not the doctor's intent.
+		if medicine in submitted:
+			frappe.throw(_("{0} is listed twice. Put the full dose on one row.").format(medicine))
+		if medicine in already_prescribed:
+			frappe.throw(_("{0} is already prescribed for this visit.").format(medicine))
+		submitted.add(medicine)
+
+		# 0 and None both mean the doctor left the box empty; a negative is a typo that would
+		# reach the pharmacy as a real number.
+		for label, value in ((_("Days"), row.get("duration_days")), (_("Quantity"), row.get("quantity"))):
+			if value is not None and flt(value) < 0:
+				frappe.throw(_("{0} cannot be negative.").format(label))
+
 		doc.append(
 			"custom_bandhu_prescription",
 			{
@@ -281,14 +353,10 @@ def prescribe_medicine(
 			},
 		)
 
-	if chief_complaint:
-		doc.custom_chief_complaints = chief_complaint
-	if past_history:
-		doc.custom_past_history = past_history
-	if allergy_history:
-		doc.custom_allergy_history = allergy_history
+	apply_clinical_notes(doc, chief_complaint, past_history, allergy_history)
 
 	doc.custom_workflow_state = "Awaiting Medicine"
+	doc.custom_called_at = None
 	doc.save(ignore_permissions=True)
 
 
@@ -352,12 +420,7 @@ def complete_encounter(
 		doc.append("custom_bandhu_diagnosis", {"diagnosis_name": diagnosis})
 	if clinical_notes:
 		doc.custom_bandhu_clinical_notes = clinical_notes
-	if chief_complaint:
-		doc.custom_chief_complaints = chief_complaint
-	if past_history:
-		doc.custom_past_history = past_history
-	if allergy_history:
-		doc.custom_allergy_history = allergy_history
+	apply_clinical_notes(doc, chief_complaint, past_history, allergy_history)
 
 	if referred_to or referral_reason:
 		if not (referred_to and referral_reason):
@@ -365,7 +428,15 @@ def complete_encounter(
 		create_referral(doc, referred_to, referred_to_practitioner, referral_reason, referral_priority)
 
 	doc.custom_workflow_state = "Completed"
+	doc.custom_called_at = None
 	doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def get_patient_card_html(encounter: str) -> str:
+	require_doctor_access()
+	doc = load_owned_encounter(encounter)
+	return render_patient_card(doc.patient, "Doctor Patient Card")
 
 
 @frappe.whitelist()
@@ -376,6 +447,7 @@ def get_referral_letter_html(encounter: str) -> str:
 	same way get_patient_card_html does on the CAD page: load_owned_encounter already proves
 	the caller may see this patient, and the print render carries only what that grants.
 	"""
+	require_doctor_access()
 	doc = load_owned_encounter(encounter)
 
 	referral = frappe.db.get_value("Referral", {"patient_encounter": doc.name}, "name")
