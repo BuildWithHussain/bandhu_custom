@@ -62,7 +62,7 @@ function renderForm(page) {
 		renderTextField("email", __("Email"), "email", true) +
 		renderTextField(
 			"mobile_phone",
-			__("Mobile"),
+			__("Mobile Number"),
 			"tel",
 			false,
 			'inputmode="numeric" maxlength="10"'
@@ -75,13 +75,43 @@ function renderForm(page) {
 		__("Create Account") +
 		"</button>" +
 		"</div>" +
-		'<div class="onboarding-result"></div>' +
-		"</div></div>";
+		"</div>" +
+		'<div class="onboarding-done"></div>' +
+		"</div>";
 
 	page.main.html(html);
 	page.main
 		.off("click", ".onboarding-submit")
 		.on("click", ".onboarding-submit", () => submitOnboarding(page));
+
+	page.main
+		.off("click", ".onboarding-add-document")
+		.on("click", ".onboarding-add-document", () => pickDocument(page));
+
+	page.main
+		.off("click", ".onboarding-remove-document")
+		.on("click", ".onboarding-remove-document", function () {
+			pendingDocuments.splice($(this).closest(".onboarding-document-row").data("index"), 1);
+			markDocumentsChanged(page);
+		});
+
+	page.main
+		.off("change", ".onboarding-document-name")
+		.on("change", ".onboarding-document-name", function () {
+			const row =
+				pendingDocuments[$(this).closest(".onboarding-document-row").data("index")];
+			if (!row) return;
+			row.document_name = $(this).val();
+			markDocumentsChanged(page);
+		});
+
+	page.main
+		.off("click", ".onboarding-save-documents")
+		.on("click", ".onboarding-save-documents", () => saveDocuments(page));
+
+	page.main
+		.off("click", ".onboarding-restart")
+		.on("click", ".onboarding-restart", () => renderForm(page));
 }
 
 function readFormValues(page) {
@@ -135,27 +165,197 @@ async function submitOnboarding(page) {
 
 	if (!result) return;
 
-	const resultBox = page.main.find(".onboarding-result");
+	renderCreated(page, result, values);
+}
+
+// Two steps, not one screen that keeps growing: the form is done, so it goes away and the page
+// says plainly what was created and what is left to do.
+const MAX_STAFF_DOCUMENTS = 10;
+
+let pendingDocuments = [];
+let documentsSaved = true;
+
+function renderCreated(page, result, values) {
+	pendingDocuments = [];
+	documentsSaved = true;
+
+	const fullName = [values.first_name, values.last_name]
+		.map((part) => (part || "").trim())
+		.filter(Boolean)
+		.join(" ");
 	const emailLine = result.email_sent
-		? __("A set-password email has been sent to {0}.", [
-				frappe.utils.escape_html(values.email.trim()),
-		  ])
-		: __(
-				"Account created, but the set-password email could not be sent. Set a password manually."
-		  );
-	resultBox
+		? __("A set-password email has been sent to them.")
+		: __("The set-password email could not be sent. Set a password for them manually.");
+
+	page.main.find(".onboarding-form").hide();
+	page.main
+		.find(".onboarding-done")
+		.data("staff-user", result.user)
 		.show()
 		.html(
-			"<strong>" +
-				__("Account created.") +
-				"</strong><br>" +
+			'<div class="onboarding-created">' +
+				frappe.utils.icon(
+					"solid-success",
+					"lg",
+					"",
+					"",
+					"current-color onboarding-created-icon"
+				) +
+				"<div><strong>" +
+				__("{0} can now sign in", [frappe.utils.escape_html(fullName)]) +
+				'</strong><div class="onboarding-created-detail">' +
 				frappe.utils.escape_html(result.user) +
 				" &middot; " +
 				frappe.utils.escape_html(result.practitioner) +
 				"<br>" +
-				emailLine
+				emailLine +
+				"</div></div></div>" +
+				'<div class="onboarding-documents"></div>' +
+				'<div class="onboarding-done-actions"></div>'
 		);
-	page.main.find(".onboarding-field").val("");
+
+	renderDocumentsPanel(page);
+	renderDoneActions(page);
+}
+
+function renderDocumentsPanel(page) {
+	page.main
+		.find(".onboarding-documents")
+		.html(
+			'<h4 class="onboarding-documents-head">' +
+				__("Documents") +
+				"</h4>" +
+				'<p class="onboarding-documents-note">' +
+				__(
+					"Optional. Up to {0} files. Name each one so anyone reading the record knows what it is.",
+					[MAX_STAFF_DOCUMENTS]
+				) +
+				"</p>" +
+				'<div class="onboarding-document-rows"></div>' +
+				'<button type="button" class="btn btn-default onboarding-add-document">' +
+				frappe.utils.icon("upload", "xs", "", "", "current-color") +
+				__("Add a document") +
+				"</button>"
+		);
+
+	renderDocumentRows(page);
+}
+
+function renderDocumentRows(page) {
+	const rows = pendingDocuments
+		.map(
+			(entry, index) =>
+				'<div class="onboarding-document-row" data-index="' +
+				index +
+				'">' +
+				'<input type="text" class="form-control onboarding-document-name" placeholder="' +
+				frappe.utils.escape_html(__("What is this file?")) +
+				'" value="' +
+				frappe.utils.escape_html(entry.document_name || "") +
+				'">' +
+				'<span class="onboarding-document-file">' +
+				frappe.utils.escape_html(entry.file_label) +
+				"</span>" +
+				'<button type="button" class="btn btn-sm btn-default onboarding-remove-document" aria-label="' +
+				frappe.utils.escape_html(__("Remove")) +
+				'">' +
+				frappe.utils.icon("close", "xs", "", "", "current-color") +
+				"</button></div>"
+		)
+		.join("");
+
+	page.main.find(".onboarding-document-rows").html(rows);
+	page.main
+		.find(".onboarding-add-document")
+		.text(pendingDocuments.length ? __("Add another document") : __("Add a document"))
+		.prop("disabled", false)
+		.toggle(pendingDocuments.length < MAX_STAFF_DOCUMENTS);
+}
+
+function pickDocument(page) {
+	const staffUser = page.main.find(".onboarding-done").data("staff-user");
+
+	new frappe.ui.FileUploader({
+		// Attached to the User, so the file lands in that person's Attachments sidebar -- the
+		// place an admin already looks for anything belonging to them.
+		doctype: "User",
+		docname: staffUser,
+		// Never public: an ID scan behind a guessable URL is readable without logging in at all.
+		disable_file_browser: true,
+		allow_multiple: false,
+		restrictions: { max_file_size: 5 * 1024 * 1024 },
+		on_success: (file) => {
+			pendingDocuments.push({
+				document_name: file.file_name || "",
+				document_file: file.file_url,
+				file_label: file.file_name || file.file_url,
+			});
+			markDocumentsChanged(page);
+		},
+	});
+}
+
+function markDocumentsChanged(page) {
+	documentsSaved = false;
+	renderDocumentRows(page);
+	renderDoneActions(page);
+}
+
+// One filled button, and it is always the next thing to do: save the documents if any are
+// waiting, otherwise start on the next person.
+function renderDoneActions(page) {
+	const save = documentsSaved
+		? ""
+		: '<button type="button" class="btn btn-primary onboarding-save-documents">' +
+		  __("Save documents") +
+		  "</button>";
+	const restart =
+		'<button type="button" class="btn ' +
+		(documentsSaved ? "btn-primary" : "btn-default") +
+		' onboarding-restart">' +
+		__("Onboard another staff member") +
+		"</button>";
+	const saved =
+		documentsSaved && pendingDocuments.length
+			? '<span class="onboarding-saved-note">' +
+			  (pendingDocuments.length === 1
+					? __("1 document saved.")
+					: __("{0} documents saved.", [pendingDocuments.length])) +
+			  "</span>"
+			: "";
+
+	page.main.find(".onboarding-done-actions").html(save + restart + saved);
+}
+
+async function saveDocuments(page) {
+	const staffUser = page.main.find(".onboarding-done").data("staff-user");
+	const unnamed = pendingDocuments.find((entry) => !(entry.document_name || "").trim());
+	if (unnamed) {
+		frappe.msgprint(
+			__("Name every document before saving, so the record says what each file is.")
+		);
+		return;
+	}
+
+	frappe.dom.freeze();
+	try {
+		await frappe.call({
+			method: "bandhu_app.bandhu_app.page.staff_onboarding.staff_onboarding.save_staff_documents",
+			args: {
+				user: staffUser,
+				documents: pendingDocuments.map((entry) => ({
+					document_name: entry.document_name.trim(),
+					document_file: entry.document_file,
+				})),
+			},
+		});
+	} finally {
+		frappe.dom.unfreeze();
+	}
+
+	documentsSaved = true;
+	renderDoneActions(page);
+	frappe.show_alert({ message: __("Documents saved"), indicator: "green" });
 }
 
 async function loadDashboard(page) {

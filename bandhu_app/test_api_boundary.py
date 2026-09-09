@@ -20,6 +20,7 @@ from frappe.handler import execute_cmd
 from frappe.tests import IntegrationTestCase
 from frappe.utils import set_request, today
 
+from bandhu_app.bandhu_app.baseline_test_fixtures import ensure_baseline_fixtures
 from bandhu_app.bandhu_app.page.cad_form import cad_form
 
 CAD = "bandhu_app.bandhu_app.page.cad_form.cad_form"
@@ -64,9 +65,11 @@ class TestApiBoundary(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		cls.clinic = frappe.get_all("Clinic", limit=1, pluck="name")[0]
-		cls.site = frappe.get_all("Site", limit=1, pluck="name")[0]
-		cls.project = frappe.get_all("Bandhu Projects", limit=1, pluck="name")[0]
+		baseline = ensure_baseline_fixtures()
+		cls.clinic = baseline["clinic"]
+		cls.site = baseline["site"]
+		cls.unit = baseline["unit"]
+		cls.project = baseline["project"]
 		cls.gender = frappe.get_all("Gender", limit=1, pluck="name")[0]
 
 	def setUp(self):
@@ -122,6 +125,7 @@ class TestApiBoundary(IntegrationTestCase):
 					"date": date or today(),
 					"clinic": self.clinic,
 					"site": self.site,
+					"unit": self.unit,
 					"project": self.project,
 					"assigned_driver": self.driver,
 					"assigned_doctor": self.doctor,
@@ -292,6 +296,7 @@ class TestApiBoundary(IntegrationTestCase):
 					"date": today(),
 					"clinic": self.clinic,
 					"site": self.site,
+					"unit": self.unit,
 					"project": self.project,
 					"assigned_driver": other_driver,
 					"assigned_doctor": self.doctor,

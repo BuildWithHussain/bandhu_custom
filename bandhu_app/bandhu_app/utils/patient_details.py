@@ -29,7 +29,20 @@ ENCOUNTER_LIST_FIELDS = [
 	"patient_age",
 	"patient_sex",
 	"encounter_date",
+	"creation",
 	"custom_workflow_state",
+	"custom_called_at",
+	"custom_chief_complaints",
+	"custom_past_history",
+	"custom_allergy_history",
+	"custom_height",
+	"custom_weight",
+	"custom_bmi",
+	"custom_temperature",
+	"custom_pulse_rate",
+	"custom_spo2",
+	"custom_blood_pressure",
+	"custom_has_referral",
 ]
 
 ENCOUNTER_CLINICAL_TABLES = {
