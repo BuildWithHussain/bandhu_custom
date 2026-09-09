@@ -5,7 +5,9 @@ from bandhu_app.bandhu_app.page.staff_onboarding.staff_onboarding import (
 	PROVISIONABLE_ROLES,
 	get_form_options,
 	provision_staff_member,
+	save_staff_documents,
 )
+from bandhu_app.bandhu_app.utils.staff_documents import MAX_STAFF_DOCUMENTS
 
 EXTRA_TEST_RECORD_DEPENDENCIES = []
 IGNORE_TEST_RECORD_DEPENDENCIES = []
@@ -85,6 +87,95 @@ class IntegrationTestStaffOnboarding(IntegrationTestCase):
 		self.assertEqual(practitioner.user_id, email)
 		self.assertEqual(practitioner.custom_role, "Doctor")
 		self.assertEqual(practitioner.status, "Active")
+
+	def test_provision_works_without_a_last_name(self):
+		"""last_name had no default, so the page omitting it for a one-name staff member made the
+		whole call fail with a 500 before any validation ran."""
+		frappe.set_user(self.system_manager_user)
+		try:
+			result = provision_staff_member(
+				first_name="Onename",
+				email="test.onboard.onename@bandhuapp.test",
+				role="Nurse",
+			)
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertTrue(frappe.db.exists("Healthcare Practitioner", result["practitioner"]))
+
+	def test_documents_are_saved_against_the_staff_member(self):
+		staff_user = self._provision("test.onboard.docs@bandhuapp.test")
+
+		frappe.set_user(self.system_manager_user)
+		try:
+			saved = save_staff_documents(
+				staff_user,
+				[{"document_name": "Nursing registration", "document_file": "/private/files/a.pdf"}],
+			)
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertEqual(saved, 1)
+		doc = frappe.get_doc("User", staff_user)
+		self.assertEqual(doc.custom_staff_documents[0].document_name, "Nursing registration")
+
+	def test_documents_are_capped(self):
+		staff_user = self._provision("test.onboard.manydocs@bandhuapp.test")
+		too_many = [
+			{"document_name": f"Paper {index}", "document_file": f"/private/files/{index}.pdf"}
+			for index in range(MAX_STAFF_DOCUMENTS + 1)
+		]
+
+		frappe.set_user(self.system_manager_user)
+		try:
+			self.assertRaises(frappe.ValidationError, save_staff_documents, staff_user, too_many)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_document_without_a_name_is_rejected(self):
+		"""The name is the only thing that says what the file is."""
+		staff_user = self._provision("test.onboard.unnamed@bandhuapp.test")
+
+		frappe.set_user(self.system_manager_user)
+		try:
+			self.assertRaises(
+				frappe.ValidationError,
+				save_staff_documents,
+				staff_user,
+				[{"document_name": "   ", "document_file": "/private/files/b.pdf"}],
+			)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_public_upload_is_forced_private(self):
+		"""An ID scan behind a guessable /files/ URL is readable without logging in at all."""
+		staff_user = self._provision("test.onboard.publicfile@bandhuapp.test")
+		public_file = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": "staff-id.txt",
+				"content": "scan",
+				"is_private": 0,
+			}
+		).insert(ignore_permissions=True)
+
+		frappe.set_user(self.system_manager_user)
+		try:
+			save_staff_documents(
+				staff_user,
+				[{"document_name": "ID proof", "document_file": public_file.file_url}],
+			)
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertTrue(frappe.db.get_value("File", public_file.name, "is_private"))
+
+	def _provision(self, email):
+		frappe.set_user(self.system_manager_user)
+		try:
+			return provision_staff_member(first_name=email.split("@")[0], email=email, role="Nurse")["user"]
+		finally:
+			frappe.set_user("Administrator")
 
 	def test_provision_rejects_non_provisionable_role(self):
 		with self.assertRaises(frappe.ValidationError):
